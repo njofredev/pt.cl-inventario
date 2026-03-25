@@ -41,7 +41,7 @@ export default function RootLayout({
 
   return (
     <html lang="es" className={mounted ? theme : "dark"} suppressHydrationWarning>
-      <body className={`${manrope.className} flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-300`}>
+      <body className={`${manrope.className} flex h-dvh overflow-hidden bg-background text-foreground transition-colors duration-300`}>
         <Sidebar />
         
         {/* Mobile Menu Overlay */}
@@ -77,7 +77,7 @@ export default function RootLayout({
           )}
         </AnimatePresence>
 
-        <main className="flex-1 flex flex-col h-full bg-background overflow-hidden relative" style={{ backgroundColor: 'var(--main-bg)' }}>
+        <main className="flex-1 flex flex-col h-dvh bg-background overflow-hidden relative" style={{ backgroundColor: 'var(--main-bg)' }}>
           {/* Header Superior Rediseñado */}
           <header className="h-16 border-b border-border bg-background sticky top-0 z-30 flex items-center justify-between px-6 shadow-sm" style={{ backgroundColor: 'var(--header-bg)', backdropFilter: 'blur(12px)' }}>
             <div className="flex items-center gap-4">
@@ -134,7 +134,7 @@ export default function RootLayout({
             </div>
           </header>
           
-          <div className="p-4 md:p-8 flex-1 overflow-y-auto">
+          <div className="p-4 md:p-8 flex-1 overflow-y-auto pb-24 md:pb-8">
             {children}
           </div>
         </main>

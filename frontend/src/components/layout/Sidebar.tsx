@@ -38,7 +38,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
 
   return (
-    <div className={`w-64 h-screen border-r border-border bg-background flex flex-col pt-6 z-10 ${isMobile ? 'flex' : 'hidden md:flex'}`} style={{ backgroundColor: 'var(--sidebar-bg)' }}>
+    <div className={`w-64 h-dvh border-r border-border bg-background flex flex-col pt-6 z-10 ${isMobile ? 'flex' : 'hidden md:flex'}`} style={{ backgroundColor: 'var(--sidebar-bg)' }}>
       <div className="px-6 mb-8 flex items-center gap-3">
         <div className="flex-shrink-0">
           <img
