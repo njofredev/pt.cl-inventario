@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://apiinventarios.policlinicotabancura.cl';
+const API_BASE_URL = 'https://apiinventarios.policlinicotabancura.cl';
+console.log('[API Client] Base URL:', API_BASE_URL);
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
