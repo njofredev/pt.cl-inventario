@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://togkwco4gkgok8ws4oksgg4o.181.42.232.26.sslip.io';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://apiinventarios.policlinicotabancura.cl';
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
