@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "../lib/api_service/client";
+import { api } from "./_lib/api_service_client";
 import { motion } from "framer-motion";
 import { TrendingUp, Package, AlertTriangle, ArrowUpRight, ArrowDownRight, RefreshCcw } from "lucide-react";
 import Link from "next/link";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "../../../lib/api_service/client";
+import { api } from "../../_lib/api_service_client";
 import { Building } from "lucide-react";
 import { motion } from "framer-motion";
 import PageHeader from "@/components/ui/PageHeader";
