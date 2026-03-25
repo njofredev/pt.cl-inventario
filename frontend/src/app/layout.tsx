@@ -59,17 +59,18 @@ export default function RootLayout({
                 animate={{ x: 0 }}
                 exit={{ x: "-100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-64 h-full bg-background border-r border-border"
+                className="w-64 h-dvh bg-background border-r border-border relative"
                 onClick={e => e.stopPropagation()}
               >
-                <div className="p-6 flex justify-between items-center border-b border-border">
-                  <span className="font-bold text-foreground">Menú</span>
-                  <button onClick={() => setIsMobileMenuOpen(false)}>
-                    <X className="w-6 h-6 text-gray-500" />
-                  </button>
-                </div>
-                {/* Re-using Sidebar component logic or just actual sidebar with a mobile flag if needed */}
-                <div className="h-full overflow-y-auto" onClick={() => setIsMobileMenuOpen(false)}>
+                {/* Close Button Overlay for Sidebar */}
+                <button 
+                  className="absolute top-4 right-4 z-50 p-2 bg-background/80 backdrop-blur rounded-full border border-border md:hidden"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+                
+                <div className="h-full" onClick={() => setIsMobileMenuOpen(false)}>
                    <Sidebar isMobile={true} />
                 </div>
               </motion.div>

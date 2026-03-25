@@ -53,7 +53,7 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 overflow-y-auto px-4 gap-6">
+      <div className={`flex flex-col flex-1 overflow-y-auto px-4 gap-6 ${isMobile ? 'pb-20' : 'pb-6'}`}>
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Operación</p>
           <div className="flex flex-col gap-1">
