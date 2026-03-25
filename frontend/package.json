@@ -25,7 +25,6 @@
     "autoprefixer": "^10",
     "eslint": "^9",
     "eslint-config-next": "15.1.0",
-    "lucide-react": "^0.468.0",
     "postcss": "^8",
     "tailwindcss": "^4",
     "typescript": "^5"

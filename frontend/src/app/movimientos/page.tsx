@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api } from "../../lib/api";
+import { api } from "@/lib/api";
 import { Plus, ArrowRightLeft, ArrowDownRight, ArrowUpRight, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import PageHeader from "@/components/ui/PageHeader";
