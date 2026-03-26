@@ -42,7 +42,7 @@ export default function RootLayout({
 
   return (
     <html lang="es" className={mounted ? theme : "dark"} suppressHydrationWarning>
-      <body className={`${manrope.className} flex h-dvh overflow-hidden bg-background text-foreground transition-colors duration-300`}>
+      <body className={`${manrope.className} flex h-dvh overflow-hidden bg-background text-foreground transition-colors duration-300`} suppressHydrationWarning>
         <Sidebar />
         
         {/* Mobile Menu Overlay */}
