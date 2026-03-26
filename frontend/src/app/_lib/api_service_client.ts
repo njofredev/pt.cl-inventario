@@ -1,11 +1,14 @@
-const API_BASE_URL = 'https://apiinventarios.policlinicotabancura.cl';
+export const API_BASE_URL = 'https://apiinventarios.policlinicotabancura.cl';
 console.log('[API Client] Base URL:', API_BASE_URL);
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
