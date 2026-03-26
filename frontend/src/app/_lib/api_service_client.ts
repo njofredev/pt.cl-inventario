@@ -1,24 +1,33 @@
-export const API_BASE_URL = 'https://apiinventarios.policlinicotabancura.cl';
+export const API_BASE_URL = 'http://127.0.0.1:8000';
 console.log('[API Client] Base URL:', API_BASE_URL);
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  console.log(`[API Client] Fetching: ${url}`, { method: options.method || 'GET', hasToken: !!token });
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Error en la petición');
+    if (!response.ok) {
+      console.warn(`[API Client] HTTP Error: ${response.status}`, url);
+      const error = await response.json();
+      throw new Error(error.detail || 'Error en la petición');
+    }
+
+    return response.json();
+  } catch (err) {
+    console.error(`[API Client] Critical Error fetching ${url}:`, err);
+    throw err;
   }
-
-  return response.json();
 }
 
 export const api = {

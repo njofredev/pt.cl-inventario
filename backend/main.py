@@ -12,10 +12,16 @@ except Exception as e:
 
 app = FastAPI(title="Sistema de Inventario API")
 
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://inventarios.policlinicotabancura.cl",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
