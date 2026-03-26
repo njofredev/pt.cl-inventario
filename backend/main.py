@@ -5,23 +5,22 @@ import models
 from routers import maestros, tipos_mov, movimientos, auth
 
 # Create database tables
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Error creating tables: {e}")
+if engine:
+    try:
+        print("[INFO] Intentando crear todas las tablas en la BD remota...")
+        Base.metadata.create_all(bind=engine)
+        print("[SUCCESS] Tablas verificadas/creadas correctamente.")
+    except Exception as e:
+        print(f"[ERROR] No se pudieron crear las tablas: {e}")
+else:
+    print("[WARNING] El motor de base de datos no está inicializado. Omitiendo creación de tablas.")
 
 app = FastAPI(title="Sistema de Inventario API")
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://inventarios.policlinicotabancura.cl",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

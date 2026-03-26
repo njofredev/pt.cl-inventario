@@ -7,9 +7,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    print("[CRITICAL] DATABASE_URL no encontrada en las variables de entorno.")
+else:
+    # Ocultar password en logs
+    print(f"[INFO] DATABASE_URL configurada: {DATABASE_URL.split('@')[-1]}")
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(DATABASE_URL) if DATABASE_URL else None
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine else None
 
 Base = declarative_base()
 
