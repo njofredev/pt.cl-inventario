@@ -8,6 +8,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import { Menu, X, ChevronRight, Bell, Search, User, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
+import NotificationsDropdown from "../components/layout/NotificationsDropdown";
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
@@ -108,10 +109,7 @@ export default function RootLayout({
               <button className="p-2 text-gray-400 hover:text-foreground hover:bg-foreground/5 rounded-lg transition hidden sm:block">
                 <Search className="w-5 h-5" />
               </button>
-              <button className="p-2 text-gray-400 hover:text-foreground hover:bg-foreground/5 rounded-lg transition relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-background"></span>
-              </button>
+              <NotificationsDropdown />
 
               <button 
                 onClick={toggleTheme}
