@@ -4,13 +4,19 @@ from typing import List
 import models, schemas
 from database import get_db
 
-router = APIRouter()
+from auth_utils import get_current_user
 
-@router.get("/tipos/", response_model=List[schemas.TipoMovimiento])
+router = APIRouter(
+    prefix="/tipos",
+    tags=["Configuración / Tipos de Movimiento"],
+    dependencies=[Depends(get_current_user)]
+)
+
+@router.get("/", response_model=List[schemas.TipoMovimiento])
 def listar_tipos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(models.TipoMovimiento).offset(skip).limit(limit).all()
 
-@router.post("/tipos/", response_model=schemas.TipoMovimiento)
+@router.post("/", response_model=schemas.TipoMovimiento)
 def crear_tipo(tipo: schemas.TipoMovimientoCreate, db: Session = Depends(get_db)):
     db_tipo = models.TipoMovimiento(**tipo.model_dump())
     db.add(db_tipo)

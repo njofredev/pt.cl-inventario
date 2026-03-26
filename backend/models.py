@@ -3,6 +3,16 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    hashed_password = Column(String(200), nullable=False)
+    nombre_completo = Column(String(100), nullable=True)
+    rol = Column(String(20), default="operador") # superadmin, operador
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+
 class CuentaContable(Base):
     __tablename__ = "cuentas_contables"
     id = Column(Integer, primary_key=True, index=True) # Identificador único autoincremental
@@ -83,7 +93,8 @@ class MovimientoInventario(Base):
     referencia_documento = Column(String(100), nullable=True) # Ej: FACTURA 123, GUIA DE DESPACHO 456
     notas = Column(Text, nullable=True) # Ej: "Ingreso inicial por inventario físico de marzo"
     fecha_movimiento = Column(DateTime(timezone=True), server_default=func.now()) # Fecha de ejecución del movimiento
-    creado_por = Column(String(100), nullable=True) # Ej: "Usuario Bodega 1"
+    usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True) # ID del usuario que realizó el movimiento
+    creado_por = Column(String(100), nullable=True) # Deprecated: usar usuario_id en el futuro
 
 class SaldoInventario(Base):
     __tablename__ = "saldos_inventario"

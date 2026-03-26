@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import models, schemas
 from database import get_db
+from auth_utils import get_current_user
 
 router = APIRouter(
     prefix="/movimientos",
@@ -13,7 +14,11 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=schemas.MovimientoInventario)
-def registrar_movimiento(mov: schemas.MovimientoInventarioCreate, db: Session = Depends(get_db)):
+def registrar_movimiento(
+    mov: schemas.MovimientoInventarioCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     # 1. Obtener Tipo de Movimiento
     tipo = db.query(models.TipoMovimiento).filter(models.TipoMovimiento.id == mov.tipo_movimiento_id).first()
     if not tipo:
@@ -82,7 +87,8 @@ def registrar_movimiento(mov: schemas.MovimientoInventarioCreate, db: Session = 
         centro_costo_id=mov.centro_costo_id,
         referencia_documento=mov.referencia_documento,
         notas=mov.notas,
-        creado_por=mov.creado_por
+        usuario_id=current_user.id,
+        creado_por=current_user.nombre_completo or current_user.username
     )
     db.add(nuevo_movimiento)
     
@@ -116,9 +122,19 @@ def registrar_movimiento(mov: schemas.MovimientoInventarioCreate, db: Session = 
         raise HTTPException(status_code=500, detail=f"Error en transacción: {e}")
 
 @router.get("/", response_model=List[schemas.MovimientoInventario])
-def listar_movimientos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def listar_movimientos(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     return db.query(models.MovimientoInventario).order_by(models.MovimientoInventario.fecha_movimiento.desc()).offset(skip).limit(limit).all()
 
 @router.get("/saldos", response_model=List[schemas.SaldoInventario])
-def listar_saldos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def listar_saldos(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     return db.query(models.SaldoInventario).offset(skip).limit(limit).all()

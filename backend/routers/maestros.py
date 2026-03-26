@@ -5,9 +5,12 @@ from typing import List
 import models, schemas
 from database import get_db
 
+from auth_utils import get_current_user
+
 router = APIRouter(
     prefix="/maestros",
-    tags=["Maestros"]
+    tags=["Maestros / Tablas Base"],
+    dependencies=[Depends(get_current_user)]
 )
 
 # --- Sucursales ---
