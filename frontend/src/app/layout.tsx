@@ -9,6 +9,7 @@ import { Menu, X, ChevronRight, Bell, Search, User, Sun, Moon } from "lucide-rea
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 import NotificationsDropdown from "../components/layout/NotificationsDropdown";
+import CommandPalette from "../components/ui/CommandPalette";
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
 }>) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
@@ -106,7 +108,11 @@ export default function RootLayout({
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="p-2 text-gray-400 hover:text-foreground hover:bg-foreground/5 rounded-lg transition hidden sm:block">
+              <button 
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="p-2 text-gray-400 hover:text-foreground hover:bg-foreground/5 rounded-lg transition hidden sm:block"
+                title="Buscador Global (Ctrl+K)"
+              >
                 <Search className="w-5 h-5" />
               </button>
               <NotificationsDropdown />
@@ -137,6 +143,7 @@ export default function RootLayout({
             {children}
           </div>
         </main>
+        <CommandPalette isOpen={isCommandPaletteOpen} setIsOpen={setIsCommandPaletteOpen} />
       </body>
     </html>
   );
