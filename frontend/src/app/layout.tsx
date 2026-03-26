@@ -31,6 +31,12 @@ function RootLayoutContent({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (mounted) {
+      document.documentElement.className = theme;
+    }
+  }, [theme, mounted]);
+
   // Proteger rutas
   useEffect(() => {
     if (!loading && !user && !isLoginPage) {
