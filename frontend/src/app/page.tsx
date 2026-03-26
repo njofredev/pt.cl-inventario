@@ -66,11 +66,22 @@ export default function Home() {
         .sort((a, b) => b.cantidad - a.cantidad)
         .slice(0, 3);
 
+      // 4. Movimientos Recientes Enriquecidos
+      const recientesEnriquecidos = movimientos.slice(0, 5).map((m: any) => {
+        const prod = productos.find((p: any) => p.id === m.producto_id);
+        const tipo = tipos.find((t: any) => t.id === m.tipo_movimiento_id);
+        return {
+          ...m,
+          producto_nombre: prod?.nombre || "Producto Desconocido",
+          tipo_nombre: tipo?.nombre || "Movimiento"
+        };
+      });
+
       setData({
         valorTotal: totalV,
         totalProductos: productos.length,
         stockCritico: criticos,
-        recientes: movimientos.slice(0, 5),
+        recientes: recientesEnriquecidos,
         masConsumidos: ranking
       });
 
@@ -158,9 +169,12 @@ export default function Home() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-foreground">
-                      Doc: {mov.referencia_documento || 'Sin Ref.'}
+                      {mov.producto_nombre}
                     </h4>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-[10px] text-gray-500">
+                      {mov.tipo_nombre} • Ref: {mov.referencia_documento || 'Sin Ref.'}
+                    </p>
+                    <p className="text-[9px] text-gray-600 mt-0.5">
                       {new Date(mov.fecha_movimiento).toLocaleString('es-CL')}
                     </p>
                   </div>
