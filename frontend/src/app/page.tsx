@@ -104,7 +104,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat, i) => (
           <motion.div 
             key={stat.title}
@@ -115,8 +115,10 @@ export default function Home() {
           >
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-gray-500 mb-1">{stat.title}</p>
-                <h3 className="text-2xl font-bold text-foreground">{loading ? "..." : stat.value}</h3>
+                <p className="text-xs sm:text-sm font-medium text-gray-400 mb-1">{stat.title}</p>
+                <h3 className="text-xl sm:text-2xl xl:text-3xl font-bold text-foreground tracking-tighter truncate">
+                  {loading ? "..." : stat.value}
+                </h3>
               </div>
               <div className={`p-3 rounded-lg bg-secondary ${stat.color}`}>
                 <stat.icon className="w-6 h-6" />
@@ -163,8 +165,8 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`text-sm font-bold ${parseFloat(mov.cantidad) > 0 ? 'text-success' : 'text-danger'}`}>
+                <div className="text-right flex-shrink-0 ml-2">
+                  <span className={`text-xs sm:text-sm font-bold ${parseFloat(mov.cantidad) > 0 ? 'text-success' : 'text-danger'}`}>
                     ${parseFloat(mov.valor_total).toLocaleString('es-CL')}
                   </span>
                 </div>
