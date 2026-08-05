@@ -14,7 +14,8 @@ import {
   Sun,
   Moon,
   Tag,
-  Scale
+  Scale,
+  Warehouse
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -59,6 +60,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       items: [
         { href: "/", label: "Panel de Control", icon: LayoutDashboard, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/productos", label: "Productos / Stock", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+        { href: "/bodegas", label: "Bodegas y Ubicaciones", icon: Warehouse, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/unidades", label: "Unidades Medida", icon: Tag, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/movimientos", label: "Movimientos", icon: ArrowLeftRight, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/solicitudes", label: "Solicitudes", icon: ClipboardList, roles: ["ADMIN", "OPERADOR"] },

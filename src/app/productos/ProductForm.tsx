@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createProductAction, getNextCorrelativeAction, searchSimilarProductsAction } from "./actions";
-import { Plus, AlertCircle, CheckCircle, CheckCircle2, Sparkles, PackageCheck } from "lucide-react";
+import { Plus, AlertCircle, CheckCircle, CheckCircle2, Sparkles, PackageCheck, Calendar, RotateCcw, Info } from "lucide-react";
 import UnitSelect from "@/components/UnitSelect";
 
 interface CuentaContable {
@@ -78,7 +78,6 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
   const [unidad, setUnidad] = useState("UND");
-  const [stockCritico, setStockCritico] = useState("5");
   const [cuentaContableId, setCuentaContableId] = useState("");
 
   // Conversión de Unidades
@@ -87,7 +86,19 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
   const [unidadEnvase, setUnidadEnvase] = useState("");
   const [unidadesPorConsumo, setUnidadesPorConsumo] = useState("1");
 
-  const [suggestions, setSuggestions] = useState<{ codigo: string; nombre: string }[]>([]);
+  // Vencimiento y Lote
+  const [tieneVencimiento, setTieneVencimiento] = useState(false);
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
+  const [lote, setLote] = useState("");
+
+  const [suggestions, setSuggestions] = useState<{
+    codigo: string;
+    nombre: string;
+    clasificacion?: string | null;
+    tipoProducto?: string | null;
+  }[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+
   const [createdProductModalData, setCreatedProductModalData] = useState<{
     codigo: string;
     nombre: string;
@@ -127,12 +138,14 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
   useEffect(() => {
     if (nombre.trim().length < 3) {
       setSuggestions([]);
+      setHasSearched(false);
       return;
     }
 
     const delayDebounceFn = setTimeout(async () => {
       const results = await searchSimilarProductsAction(nombre);
       setSuggestions(results);
+      setHasSearched(true);
     }, 350);
 
     return () => clearTimeout(delayDebounceFn);
@@ -148,7 +161,6 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
     formData.append("codigo", codigo);
     formData.append("nombre", nombre);
     formData.append("unidad", unidad);
-    formData.append("stockCritico", stockCritico);
     formData.append("cuentaContableId", cuentaContableId);
 
     // Unidades
@@ -156,6 +168,11 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
     formData.append("unidadesPorEnvase", unidadesPorEnvase);
     formData.append("unidadEnvase", unidadEnvase);
     formData.append("unidadesPorConsumo", unidadesPorConsumo);
+
+    // Vencimiento y Lote
+    formData.append("tieneVencimiento", tieneVencimiento ? "true" : "false");
+    formData.append("fechaVencimiento", fechaVencimiento);
+    formData.append("lote", lote);
 
     const res = await createProductAction(formData);
 
@@ -175,61 +192,175 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
       setCodigo("");
       setNombre("");
       setUnidad("UND");
-      setStockCritico("5");
       setCuentaContableId("");
       setUnidadCompra("");
       setUnidadesPorEnvase("1");
       setUnidadEnvase("");
       setUnidadesPorConsumo("1");
+      setTieneVencimiento(false);
+      setFechaVencimiento("");
+      setLote("");
       setSuggestions([]);
     }
+  }
+
+  function handleReset() {
+    setClasificacion("");
+    setTipo("");
+    setCodigo("");
+    setNombre("");
+    setUnidad("UND");
+    setCuentaContableId("");
+    setUnidadCompra("");
+    setUnidadesPorEnvase("1");
+    setUnidadEnvase("");
+    setUnidadesPorConsumo("1");
+    setTieneVencimiento(false);
+    setFechaVencimiento("");
+    setLote("");
+    setSuggestions([]);
+    setError(null);
+    setSuccess(null);
   }
 
   const tiposDisponibles = clasificacion ? TIPOS[clasificacion] || [] : [];
   const factorTotal = (parseInt(unidadesPorEnvase) || 1) * (parseInt(unidadesPorConsumo) || 1);
 
+  const prefixSelected = clasificacion && tipo ? `${clasificacion}-${tipo}-` : null;
+
+  const inSameCategory = suggestions.filter((s) => 
+    prefixSelected ? s.codigo.startsWith(prefixSelected) : false
+  );
+
+  const inOtherCategory = suggestions.filter((s) => 
+    prefixSelected ? !s.codigo.startsWith(prefixSelected) : true
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5">
-      {/* Clasificación y Tipo en Grilla de 2 columnas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Clasificación *</label>
-          <select
-            value={clasificacion}
-            onChange={(e) => setClasificacion(e.target.value)}
-            required
-            className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-          >
-            <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Selecciona...</option>
-            {CLASIFICACIONES.map((c) => (
-              <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-4">
+      {/* Header Formulario + Botón Limpiar a la Derecha */}
+      <div className="border-b border-slate-200 dark:border-slate-800 pb-2.5 flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+            Nuevo Producto
+          </h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Registra un nuevo material en el catálogo general
+          </p>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Tipo de Producto *</label>
-          <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value)}
-            disabled={!clasificacion}
-            required
-            className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 font-medium"
-          >
-            <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Selecciona tipo...</option>
-            {tiposDisponibles.map((t) => (
-              <option key={t.id} value={t.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
-                {t.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+          title="Limpiar formulario completo"
+        >
+          <RotateCcw className="h-3.5 w-3.5 text-white" />
+          <span>Limpiar</span>
+        </button>
       </div>
 
-      {/* Código del Producto y Stock Crítico */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* 1. Clasificación y Tipo en Grilla de 2 columnas (Primero) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Clasificación *</label>
+            <select
+              value={clasificacion}
+              onChange={(e) => setClasificacion(e.target.value)}
+              required
+              className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+            >
+              <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Selecciona...</option>
+              {CLASIFICACIONES.map((c) => (
+                <option key={c.id} value={c.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Tipo de Producto *</label>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              disabled={!clasificacion}
+              required
+              className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 font-medium"
+            >
+              <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Selecciona tipo...</option>
+              {tiposDisponibles.map((t) => (
+                <option key={t.id} value={t.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                  {t.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* 2. Nombre del Producto (Segundo) */}
+        <div className="space-y-1">
+          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Nombre Producto *</label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="ej: Paracetamol 500mg"
+            required
+            className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+          />
+          {/* Banner de Validación e Inteligencia de Coincidencias */}
+          {nombre.trim().length >= 3 && hasSearched && (
+            <div className="mt-1.5 space-y-2">
+              {/* Caso 1: Coincidencia en la MISMA categoría y tipo */}
+              {inSameCategory.length > 0 && (
+                <div className="p-3 bg-red-50/90 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl space-y-1.5 animate-in fade-in">
+                  <div className="text-[10px] font-extrabold text-red-800 dark:text-red-300 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                    <span>⚠️ El producto ya existe en esta categoría y tipo seleccionado:</span>
+                  </div>
+                  <ul className="text-[10px] text-red-950 dark:text-red-200 font-medium space-y-1 max-h-24 overflow-y-auto pr-1">
+                    {inSameCategory.map((s) => (
+                      <li key={s.codigo} className="flex justify-between items-center border-b border-red-200/50 dark:border-red-800/40 pb-0.5 last:border-0 last:pb-0">
+                        <span className="truncate pr-2">{s.nombre}</span>
+                        <span className="font-mono text-red-700 dark:text-red-400 flex-shrink-0 font-bold">{s.codigo}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Caso 2: Coincidencia en OTRA categoría / tipo */}
+              {inOtherCategory.length > 0 && (
+                <div className="p-3 bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl space-y-1.5 animate-in fade-in">
+                  <div className="text-[10px] font-extrabold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span>💡 Producto nuevo en esta categoría/tipo, pero registrado en otra sección:</span>
+                  </div>
+                  <ul className="text-[10px] text-blue-950 dark:text-blue-200 font-medium space-y-1 max-h-24 overflow-y-auto pr-1">
+                    {inOtherCategory.map((s) => (
+                      <li key={s.codigo} className="flex justify-between items-center border-b border-blue-200/50 dark:border-blue-800/40 pb-0.5 last:border-0 last:pb-0">
+                        <span className="truncate pr-2">{s.nombre}</span>
+                        <span className="font-mono text-blue-700 dark:text-blue-400 flex-shrink-0 font-bold">{s.codigo}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Caso 3: Producto totalmente nuevo en todo el inventario */}
+              {suggestions.length === 0 && (
+                <div className="p-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-[10px] text-emerald-800 dark:text-emerald-300 font-bold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>✅ Producto totalmente nuevo: No existen coincidencias en el inventario.</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Código del Producto (Tercero) */}
         <div className="space-y-1">
           <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Código (Autogenerado) *</label>
           <input
@@ -242,43 +373,68 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Stock Crítico Mínimo</label>
-          <input
-            type="number"
-            value={stockCritico}
-            onChange={(e) => setStockCritico(e.target.value)}
-            min="0"
-            className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-          />
+      {/* SECCIÓN PREGUNTA: ¿El producto vence? */}
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            ¿El producto vence?
+          </label>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-slate-700 dark:text-slate-300">
+              <input
+                type="radio"
+                name="tieneVencimiento"
+                checked={tieneVencimiento === true}
+                onChange={() => setTieneVencimiento(true)}
+                className="text-teal-600 focus:ring-teal-500 cursor-pointer"
+              />
+              Sí
+            </label>
+            <label className="flex items-center gap-1.5 text-xs font-bold cursor-pointer text-slate-700 dark:text-slate-300">
+              <input
+                type="radio"
+                name="tieneVencimiento"
+                checked={tieneVencimiento === false}
+                onChange={() => {
+                  setTieneVencimiento(false);
+                  setFechaVencimiento("");
+                  setLote("");
+                }}
+                className="text-teal-600 focus:ring-teal-500 cursor-pointer"
+              />
+              No
+            </label>
+          </div>
         </div>
-      </div>
 
-      {/* Nombre */}
-      <div className="space-y-1">
-        <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Nombre Producto *</label>
-        <input
-          type="text"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          placeholder="ej: Paracetamol 500mg"
-          required
-          className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-        />
-        {suggestions.length > 0 && (
-          <div className="mt-1.5 p-3 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1">
-            <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>Productos similares ya registrados:</span>
+        {tieneVencimiento && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200 dark:border-slate-700/60 animate-in fade-in duration-200">
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Fecha de Vencimiento *
+              </label>
+              <input
+                type="date"
+                required={tieneVencimiento}
+                value={fechaVencimiento}
+                onChange={(e) => setFechaVencimiento(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+              />
             </div>
-            <ul className="text-[10px] text-amber-950 dark:text-amber-200 font-medium space-y-1 max-h-24 overflow-y-auto pr-1">
-              {suggestions.map((s) => (
-                <li key={s.codigo} className="flex justify-between border-b border-amber-200/50 dark:border-amber-800/40 pb-0.5 last:border-0 last:pb-0">
-                  <span className="truncate pr-2">{s.nombre}</span>
-                  <span className="font-mono text-amber-700 dark:text-amber-400 flex-shrink-0 font-bold">{s.codigo}</span>
-                </li>
-              ))}
-            </ul>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Número de Lote (Opcional)
+              </label>
+              <input
+                type="text"
+                value={lote}
+                onChange={(e) => setLote(e.target.value)}
+                placeholder="ej: LOTE-2026-X8"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -465,6 +621,7 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
           </div>
         </div>
       )}
-    </form>
+      </form>
+    </div>
   );
 }

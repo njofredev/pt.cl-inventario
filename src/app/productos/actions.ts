@@ -16,13 +16,21 @@ export async function createProductAction(formData: FormData) {
   const unidadEnvase = (formData.get("unidadEnvase") as string)?.trim() || null;
   const unidadesPorConsumoRaw = formData.get("unidadesPorConsumo") as string;
 
+  // Vencimiento y Lote
+  const tieneVencimientoRaw = formData.get("tieneVencimiento") as string;
+  const fechaVencimientoRaw = formData.get("fechaVencimiento") as string;
+  const lote = (formData.get("lote") as string)?.trim() || null;
+
   if (!codigo || !nombre) {
     return { error: "El código y el nombre son obligatorios." };
   }
 
-  const stockCritico = parseInt(stockCriticoRaw || "5");
+  const stockCritico = parseInt(stockCriticoRaw || "0");
   const unidadesPorEnvase = Math.max(1, parseInt(unidadesPorEnvaseRaw || "1"));
   const unidadesPorConsumo = Math.max(1, parseInt(unidadesPorConsumoRaw || "1"));
+
+  const tieneVencimiento = tieneVencimientoRaw === "true";
+  const fechaVencimiento = tieneVencimiento && fechaVencimientoRaw ? new Date(fechaVencimientoRaw) : null;
 
   try {
     const existing = await prisma.product.findUnique({
@@ -44,6 +52,9 @@ export async function createProductAction(formData: FormData) {
         unidadesPorEnvase,
         unidadEnvase,
         unidadesPorConsumo,
+        tieneVencimiento,
+        fechaVencimiento,
+        lote,
       },
     });
 
@@ -203,13 +214,15 @@ export async function searchSimilarProductsAction(query: string) {
           mode: "insensitive",
         },
       },
-      take: 5,
+      take: 6,
       select: {
         codigo: true,
         nombre: true,
+        clasificacion: true,
+        tipoProducto: true,
       },
     });
-    return products;
+    return JSON.parse(JSON.stringify(products));
   } catch (error) {
     console.error("Error searching similar products:", error);
     return [];

@@ -75,15 +75,7 @@ export default async function ProductosPage(props: PageProps) {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Left Column: Form Card */}
-        <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-fit space-y-4">
-          <div>
-            <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-2.5">
-              Nuevo Producto
-            </h2>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Registra un nuevo material en el catálogo general
-            </p>
-          </div>
+        <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-fit">
           <ProductForm 
             cuentasContables={JSON.parse(JSON.stringify(cuentasContables))} 
             unidadesMedida={JSON.parse(JSON.stringify(unidadesMedida))}

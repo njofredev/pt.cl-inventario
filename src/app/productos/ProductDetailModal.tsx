@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { 
-  X, 
-  Database, 
-  MapPin, 
-  History, 
-  Edit3, 
-  Trash2, 
-  Copy, 
-  Check, 
-  AlertCircle, 
+import {
+  X,
+  Database,
+  MapPin,
+  History,
+  Edit3,
+  Trash2,
+  Copy,
+  Check,
+  AlertCircle,
   Save,
   ArrowRightLeft,
   Calendar,
@@ -129,7 +129,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#0E172E] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
-        
+
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-[#0B1326]">
           <div className="flex items-center gap-3 min-w-0">
@@ -161,44 +161,40 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
         <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E172E] px-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab("INSPECTION")}
-            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "INSPECTION"
+            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${activeTab === "INSPECTION"
                 ? "border-teal-600 text-teal-600 dark:text-teal-400"
                 : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             <Database className="h-3.5 w-3.5" /> Ficha Técnica DB
           </button>
-          
+
           <button
             onClick={() => setActiveTab("LOCATIONS")}
-            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "LOCATIONS"
+            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${activeTab === "LOCATIONS"
                 ? "border-teal-600 text-teal-600 dark:text-teal-400"
                 : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             <MapPin className="h-3.5 w-3.5" /> Desglose Físico ({productData?.stocks?.length || 0})
           </button>
 
           <button
             onClick={() => setActiveTab("MOVEMENTS")}
-            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "MOVEMENTS"
+            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${activeTab === "MOVEMENTS"
                 ? "border-teal-600 text-teal-600 dark:text-teal-400"
                 : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             <History className="h-3.5 w-3.5" /> Histórico Movimientos
           </button>
 
           <button
             onClick={() => setActiveTab("EDIT")}
-            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "EDIT"
+            className={`px-4 py-3 text-xs font-bold border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${activeTab === "EDIT"
                 ? "border-teal-600 text-teal-600 dark:text-teal-400"
                 : "border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-            }`}
+              }`}
           >
             <Edit3 className="h-3.5 w-3.5" /> Editar / Eliminar
           </button>
@@ -215,7 +211,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
               {/* TAB 1: INSPECCIÓN DB */}
               {activeTab === "INSPECTION" && (
                 <div className="space-y-5">
-                  
+
                   {/* Stock Banner */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-slate-50 dark:bg-[#131E3A] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
@@ -250,7 +246,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                     <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
                       Campos de Registro Prisma Database
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {/* UUID */}
                       <div className="p-3 bg-slate-50 dark:bg-[#131E3A] rounded-xl border border-slate-200/80 dark:border-slate-700/60">
@@ -271,7 +267,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                       <div className="p-3 bg-slate-50 dark:bg-[#131E3A] rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                         <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cuenta de Existencias Asignada</span>
                         <span className="font-bold text-slate-800 dark:text-slate-100">
-                          {productData.cuentaContable 
+                          {productData.cuentaContable
                             ? `${productData.cuentaContable.codigo} - ${productData.cuentaContable.nombre}`
                             : "Sin cuenta contable asignada"}
                         </span>
@@ -382,11 +378,10 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                                 {new Date(m.fecha).toLocaleString("es-CL")}
                               </td>
                               <td className="p-3">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${
-                                  m.tipoMovimiento?.esEntrada 
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${m.tipoMovimiento?.esEntrada
                                     ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                                     : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                                }`}>
+                                  }`}>
                                   {m.tipoMovimiento?.nombre || "Movimiento"}
                                 </span>
                               </td>
@@ -411,7 +406,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
               {/* TAB 4: EDITAR / ELIMINAR */}
               {activeTab === "EDIT" && (
                 <div className="space-y-6">
-                  
+
                   {/* Form */}
                   <form onSubmit={handleUpdate} className="space-y-4">
                     <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
@@ -462,7 +457,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Contenido x Caja</label>
+                          <label className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">Contenido</label>
                           <input
                             type="number"
                             min="1"
