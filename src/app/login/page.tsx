@@ -1,16 +1,42 @@
 'use client'
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { loginAction } from "./actions";
-import { KeyRound, User, AlertCircle, ArrowRight, ShieldCheck, Sun, Boxes, Warehouse, ClipboardCheck, ShoppingBag, FileBarChart } from "lucide-react";
+import { KeyRound, User, AlertCircle, ArrowRight, ShieldCheck, Sun, Moon, Boxes, Warehouse, ClipboardCheck, ShoppingBag, FileBarChart } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const isDark = savedTheme === null ? true : savedTheme === "dark";
+    setDarkMode(isDark);
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    setMounted(true);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const nextDark = !darkMode;
+    setDarkMode(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,27 +64,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#070C18] text-slate-100 flex flex-col md:flex-row overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-slate-100 dark:bg-[#070C18] text-slate-800 dark:text-slate-100 flex flex-col md:flex-row overflow-hidden font-sans">
       
       {/* ---------------------------------------------------- */}
       {/* SECCIÓN IZQUIERDA: Formulario de Login (A la Izquierda) */}
       {/* ---------------------------------------------------- */}
-      <div className="w-full md:w-[440px] lg:w-[480px] xl:w-[520px] flex flex-col justify-between p-6 sm:p-10 bg-[#0B1326] border-r border-slate-800/80 relative z-20">
+      <div className="w-full md:w-[440px] lg:w-[480px] xl:w-[520px] flex flex-col justify-between p-6 sm:p-10 bg-slate-50 dark:bg-[#0B1326] border-r border-slate-200 dark:border-slate-800/80 relative z-20">
         
         {/* Top Control Bar */}
         <div className="flex items-center justify-end">
           <button 
             type="button"
-            className="w-8 h-8 rounded-full bg-slate-800/90 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-all cursor-pointer"
-            title="Modo Visual"
+            onClick={toggleDarkMode}
+            className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800/90 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+            title={darkMode ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
           >
-            <Sun className="h-4 w-4" />
+            {darkMode ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
           </button>
         </div>
 
         {/* Center Card Panel */}
         <div className="my-auto py-6">
-          <div className="bg-[#101A33] border border-slate-700/60 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/80 space-y-6">
+          <div className="bg-white dark:bg-[#101A33] border border-slate-200 dark:border-slate-700/60 rounded-3xl p-8 sm:p-10 shadow-xl dark:shadow-2xl dark:shadow-black/80 space-y-6">
             
             {/* Header */}
             <div className="text-center space-y-2">
@@ -66,13 +93,13 @@ export default function LoginPage() {
                 <img src="/logo.svg" alt="Tabancura Logo" className="h-10 w-auto object-contain" />
               </div>
               <div>
-                <span className="text-[10px] font-extrabold tracking-widest text-teal-400 uppercase">
+                <span className="text-[10px] font-extrabold tracking-widest text-teal-600 dark:text-teal-400 uppercase">
                   POLICLÍNICO TABANCURA
                 </span>
-                <h1 className="text-xl font-extrabold text-white tracking-tight mt-0.5">
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5">
                   Control de Inventario
                 </h1>
-                <p className="text-xs text-slate-400 mt-1 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
                   Ingresa tus credenciales para acceder al sistema
                 </p>
               </div>
@@ -83,44 +110,44 @@ export default function LoginPage() {
               
               {/* Username Field */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                   Usuario
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Ej. admin"
                     required
-                    className="w-full pl-10 pr-4 py-3 text-xs bg-[#070D1B] border border-slate-700 text-white placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-3 text-xs bg-slate-50 dark:bg-[#070D1B] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
                   />
                 </div>
               </div>
 
               {/* Password Field */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                   Contraseña
                 </label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-10 pr-4 py-3 text-xs bg-[#070D1B] border border-slate-700 text-white placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
+                    className="w-full pl-10 pr-4 py-3 text-xs bg-slate-50 dark:bg-[#070D1B] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all font-medium"
                   />
                 </div>
               </div>
 
               {/* Error Alert */}
               {error && (
-                <div className="p-3 bg-red-950/60 border border-red-800/80 text-red-200 rounded-xl text-[11px] font-semibold flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-400" />
+                <div className="p-3 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/80 text-red-800 dark:text-red-200 rounded-xl text-[11px] font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500 dark:text-red-400" />
                   <span>{error}</span>
                 </div>
               )}
@@ -129,7 +156,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 text-xs font-extrabold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 disabled:opacity-50 rounded-xl transition-all active-scale-down shadow-lg shadow-teal-950/60 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full py-3.5 text-xs font-extrabold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 disabled:opacity-50 rounded-xl transition-all active-scale-down shadow-lg shadow-teal-500/20 dark:shadow-teal-950/60 flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 <span>{loading ? "Verificando..." : "Ingresar al Sistema"}</span>
                 {!loading && <ArrowRight className="h-4 w-4" />}
@@ -137,12 +164,12 @@ export default function LoginPage() {
             </form>
 
             {/* Support Link & Security Badge */}
-            <div className="pt-4 space-y-3 text-center border-t border-slate-800/80">
-              <p className="text-[11px] text-slate-400">
+            <div className="pt-4 space-y-3 text-center border-t border-slate-200 dark:border-slate-800/80">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 ¿Necesitas acceso o restablecer credenciales?{" "}
                 <a 
                   href="mailto:soporte@policlinicotabancura.cl" 
-                  className="text-teal-400 hover:text-teal-300 font-bold underline transition-colors"
+                  className="text-teal-600 dark:text-teal-400 hover:text-teal-500 font-bold underline transition-colors"
                 >
                   Contactar Soporte
                 </a>
