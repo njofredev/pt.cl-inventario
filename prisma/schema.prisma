@@ -1,0 +1,249 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. Maestro de Usuarios y Permisos
+model User {
+  id          String       @id @default(cuid())
+  username    String       @unique
+  password    String       // Contraseña (admin123)
+  nombre      String
+  rut         String?      @unique
+  areaTrabajo String?
+  cargo       String?
+  role        String       // 'ADMIN', 'OPERADOR', 'CONTABLE'
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  movimientos Movimiento[]
+}
+
+// 2. Maestro de Cuentas Contables (Existencias)
+model CuentaContable {
+  id        String    @id @default(cuid())
+  codigo    String    @unique
+  nombre    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+// 3. Estructura Físico-Geográfica (Sucursales -> Bodegas -> Ubicaciones)
+model Sucursal {
+  id        String    @id @default(cuid())
+  nombre    String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bodegas   Bodega[]
+  cuadros   CuadroComparativo[]
+}
+
+model Bodega {
+  id          String      @id @default(cuid())
+  nombre      String
+  sucursalId  String
+  sucursal    Sucursal    @relation(fields: [sucursalId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  ubicaciones Ubicacion[]
+  stocks      Stock[]
+  movimientos Movimiento[]
+}
+
+model Ubicacion {
+  id        String       @id @default(cuid())
+  nombre    String
+  bodegaId  String
+  bodega    Bodega       @relation(fields: [bodegaId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  stocks    Stock[]
+  movimientos Movimiento[]
+}
+
+// 4. Centros de Costos
+model CentroCosto {
+  id          String       @id @default(cuid())
+  codigo      String       @unique
+  nombre      String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  movimientos Movimiento[]
+  solicitudes Solicitud[]
+}
+
+// 5. Maestro de Proveedores
+model Proveedor {
+  id               String       @id @default(cuid())
+  codigo           String?      @unique
+  rut              String       @unique
+  razonSocial      String
+  condicionPago    String?
+  direccion        String?
+  contacto         String?
+  email            String?
+  telefono         String?
+  sedesRegistradas String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  movimientos      Movimiento[]
+}
+
+// 6. Tipos de Movimientos (Entrada Compra, Regalo, Ajuste Entrada, Consumo, Baja, Ajuste Salida)
+model TipoMovimiento {
+  id          String       @id @default(cuid())
+  nombre      String       @unique
+  esEntrada   Boolean      // true: Suma al stock, false: Resta del stock
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  movimientos Movimiento[]
+}
+
+// 7. Maestro de Productos
+model Product {
+  id               String          @id @default(cuid())
+  codigo           String          @unique
+  nombre           String
+  clasificacion    String?
+  tipoProducto     String?
+  unidad           String?         // ej. Unidad, Caja, Frasco
+  ppp              Float           @default(0.0) // Precio Promedio Ponderado
+  costoNeto        Float           @default(0.0) // Costo neto unitario
+  stockCritico       Int             @default(0)   // Stock mínimo alertable
+  
+  // Conversión de Unidades de Compra a Consumo
+  unidadCompra       String?
+  unidadesPorEnvase  Int             @default(1)
+  unidadEnvase       String?
+  unidadesPorConsumo Int             @default(1)
+
+  cuentaContableId String?
+  cuentaContable   CuentaContable? @relation(fields: [cuentaContableId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  stocks           Stock[]
+  movimientos      Movimiento[]
+  solicitudItems   SolicitudItem[]
+  cuadroItems      CuadroComparativoItem[]
+}
+
+// 8. Control de Stock por Ubicación Física
+model Stock {
+  id          String    @id @default(cuid())
+  productoId  String
+  bodegaId    String
+  ubicacionId String
+  cantidad    Int       @default(0)
+  product     Product   @relation(fields: [productoId], references: [id])
+  bodega      Bodega    @relation(fields: [bodegaId], references: [id])
+  ubicacion   Ubicacion @relation(fields: [ubicacionId], references: [id])
+
+  @@unique([productoId, bodegaId, ubicacionId])
+}
+
+// 9. Histórico de Movimientos (Entradas, Salidas, Ajustes)
+model Movimiento {
+  id               String         @id @default(cuid())
+  fecha            DateTime       @default(now())
+  productoId       String
+  tipoMovimientoId String
+  cantidad         Int
+  valorUnitario    Float          @default(0.0) // Valor neto unitario de la compra/ajuste
+  pppCalculado     Float          @default(0.0) // PPP resultante o actual a la fecha
+  bodegaId         String?
+  ubicacionId      String?
+  centroCostoId    String?
+  proveedorId      String?
+  usuarioId        String         // Usuario que realiza la acción
+  recibidoPor      String?        // Persona que recibe los materiales (Consumos)
+  documentoTipo    String?        // FACTURA, GUIA_DESPACHO, etc.
+  documentoNumero  String?
+  createdAt        DateTime       @default(now())
+
+  product          Product        @relation(fields: [productoId], references: [id])
+  tipoMovimiento   TipoMovimiento @relation(fields: [tipoMovimientoId], references: [id])
+  bodega           Bodega?        @relation(fields: [bodegaId], references: [id])
+  ubicacion        Ubicacion?     @relation(fields: [ubicacionId], references: [id])
+  centroCosto      CentroCosto?   @relation(fields: [centroCostoId], references: [id])
+  proveedor        Proveedor?     @relation(fields: [proveedorId], references: [id])
+  usuario          User           @relation(fields: [usuarioId], references: [id])
+}
+
+// 10. Solicitudes Públicas de Materiales (localhost:3000/solicitar)
+model Solicitud {
+  id            String          @id @default(cuid())
+  fecha         DateTime        @default(now())
+  nombre        String          // Nombre del solicitante
+  rut           String?         // RUT del solicitante
+  areaTrabajo   String?
+  cargo         String?
+  centroCostoId String
+  estado        String          @default("PENDIENTE") // PENDIENTE, APROBADA, RECHAZADA
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  centroCosto   CentroCosto     @relation(fields: [centroCostoId], references: [id])
+  items         SolicitudItem[]
+}
+
+model SolicitudItem {
+  id          String    @id @default(cuid())
+  solicitudId String
+  productoId  String
+  cantidad    Int
+
+  solicitud   Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productoId], references: [id])
+}
+
+// 11. Cuadros Comparativos de Cotizaciones
+model CuadroComparativo {
+  id               String                  @id @default(cuid())
+  fecha            DateTime                @default(now())
+  sucursalId       String?
+  sucursal         Sucursal?               @relation(fields: [sucursalId], references: [id])
+  proveedor1       String                  @default("Proveedor A")
+  proveedor2       String                  @default("Proveedor B")
+  proveedor3       String                  @default("Proveedor C")
+  ganador          Int?                    // 1, 2, o 3
+  observaciones    String?
+  totalOrdenCompra Float                   @default(0.0)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  items            CuadroComparativoItem[]
+}
+
+model CuadroComparativoItem {
+  id                  String            @id @default(cuid())
+  cuadroComparativoId String
+  cuadroComparativo   CuadroComparativo @relation(fields: [cuadroComparativoId], references: [id], onDelete: Cascade)
+  productoId          String?
+  producto            Product?          @relation(fields: [productoId], references: [id])
+  nombreArticulo      String            // Nombre o descripción del artículo
+  cantidad            Int               @default(1)
+  
+  // Cotización 1
+  precioUnitario1     Float             @default(0.0)
+  
+  // Cotización 2
+  precioUnitario2     Float             @default(0.0)
+  
+  // Cotización 3
+  precioUnitario3     Float             @default(0.0)
+
+  // Último precio de compra (Informativo)
+  ultimoPrecio        Float?            @default(0.0)
+  ultimoProveedor     String?
+}
+
+// 12. Catálogo de Unidades de Medida
+model UnidadMedida {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-brand-teal: #227262;
+  --color-brand-blue: #162158;
+  --color-clinical-bg: #f8fafc;
+  
+  --font-sans: 'Inter', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+ 
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-sparkle: sparkleAnim linear infinite;
+  --animate-pulse-slow: pulse-slow 8s ease-in-out infinite;
+  
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-50% - 1rem)); }
+  }
+  @keyframes sparkleAnim {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+    30% { opacity: 0.9; }
+    70% { opacity: 0.9; }
+    100% { opacity: 0; transform: translate(25px, -35px) scale(0.5); }
+  }
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+  }
+}
+
+@layer base {
+  :root {
+    --color-primary: #162158;
+    --color-secondary: #227262;
+    --background: #F8FAFC;
+    --foreground: #0f172a;
+  }
+  .dark {
+    --color-primary: #31c4a4;
+    --color-secondary: #227262;
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --color-clinical-bg: #09090b;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .glass-morphism {
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(9, 9, 11, 0.08);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.01);
+  }
+  
+  .dark .glass-morphism {
+    background-color: rgba(15, 23, 42, 0.75);
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .transition-spring {
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition-duration: 400ms;
+  }
+  
+  .active-scale-down:active {
+    transform: scale(0.98);
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

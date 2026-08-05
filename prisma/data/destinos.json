@@ -1,0 +1,226 @@
+[
+  {
+    "nombre": "100 - Recepción",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "101 - Sala RX",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "102 - Box dental 1",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "103 - Box dental 2",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "104 - Box dental 3",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "105 - Box dental 4",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "106 - Esterilización",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "107 - Sala Recepción y Pasillos",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "108 - Farmacia",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "109 - Baño Administración",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "110 - Baño Pacientes",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "111 - Baño Tons",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "112 - Cosina",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "113 - Bodega Insumos",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "114 - Consulta Psicología Niños",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "115 - Vestidor",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "116 - Sala Multiuso",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "117 - Bodega Documentos",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "118 - Bodega Aseo",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "119- Consulta Psicología Adultos",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "120 - Consulta Psiquiatría",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "121 - Consulta Psicología Adultos (Tere)",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "122 - Consulta Pediatría",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "123 - Jardin Exteriores",
+    "tipo": "LUGAR"
+  },
+  {
+    "nombre": "Tons - Ximena Greene",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Tons - Valentina Pavez",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Tons - María José Arteaga",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Tons - María Ormazabal",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Tons - Anabela Bello",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "RX - Fernando Urbina",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Recep - Juliana Baez",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Recep - Gabriela Lagos",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Recep - Constanza Jimenez",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Farm - Isabel Braun",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Aseo - Cecilia Tapia",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Aseo - Daniela Sanhueza",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Antonia Pardo",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Antonio Alvear",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Camila del Puerto",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Consuelo Olivares",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - David Sandoval",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Felipe Valenzuela",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Gardenia Saldias",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Grace Martinson",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Josefina Mass",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Trinidad Sánchez",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Florencia Mizala",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - María Fernanda González",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Catalina Villegas",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Pauline Heinriksen",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Odo - Soledad Iturra",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Adm - Andrea Palma",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Adm - Javiera Marchant",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Adm - Felipe Nilo",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Adm - Teresita Covarrubias",
+    "tipo": "PERSONA"
+  },
+  {
+    "nombre": "Adm - Alejandro Valenzuela",
+    "tipo": "PERSONA"
+  }
+]
