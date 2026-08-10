@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -12,7 +12,10 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Calculator,
-  Loader2
+  Loader2,
+  Warehouse,
+  MapPin,
+  Tag
 } from 'lucide-react';
 import { createDocumentoMovimiento, DocumentItemInput } from './docActions';
 import QuickCreateProductModal from '@/components/QuickCreateProductModal';
@@ -22,17 +25,16 @@ interface ProductOption {
   codigo: string;
   nombre: string;
   unidad?: string | null;
+  unidadCompra?: string | null;
+  unidadesPorEnvase?: number | null;
+  unidadEnvase?: string | null;
+  unidadesPorConsumo?: number | null;
 }
 
-interface Ubicacion {
+interface BodegaOption {
   id: string;
   nombre: string;
-}
-
-interface Bodega {
-  id: string;
-  nombre: string;
-  ubicaciones: Ubicacion[];
+  ubicaciones: Array<{ id: string; nombre: string }>;
 }
 
 interface ProveedorOption {
@@ -43,7 +45,7 @@ interface ProveedorOption {
 
 interface Props {
   products: ProductOption[];
-  bodegas: Bodega[];
+  bodegas: BodegaOption[];
   proveedores: ProveedorOption[];
   onSuccess?: () => void;
 }
@@ -70,26 +72,24 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
   const [razonSocialProveedor, setRazonSocialProveedor] = useState('');
   const [showProvDropdown, setShowProvDropdown] = useState(false);
 
+  // Document-Level Settings (Specified ONCE for the entire document)
+  const [headerBodegaId, setHeaderBodegaId] = useState(bodegas[0]?.id || '');
+  const [headerUbicacionId, setHeaderUbicacionId] = useState(bodegas[0]?.ubicaciones[0]?.id || '');
+  const [headerEsAfecto, setHeaderEsAfecto] = useState(true);   // true: 19% IVA, false: 0% Exento
+  const [headerIncluyeIva, setHeaderIncluyeIva] = useState(true); // true: Con IVA Inc., false: Sin IVA (Neto)
+
   // Document Totals & Status
   const [montoTotal, setMontoTotal] = useState('');
   const [esRecepcionIncompleta, setEsRecepcionIncompleta] = useState(false);
   const [observaciones, setObservaciones] = useState('');
 
-  // Default Warehouse for easy selection
-  const [defaultBodegaId, setDefaultBodegaId] = useState(bodegas[0]?.id || '');
-  const [defaultUbicacionId, setDefaultUbicacionId] = useState(bodegas[0]?.ubicaciones[0]?.id || '');
-
-  // Multi-item Breakdown
+  // Multi-item Breakdown (Lightweight rows)
   const [items, setItems] = useState<Array<{
     key: string;
     productoId: string;
     searchQuery: string;
     cantidad: string;
     precioUnitario: string;
-    esAfecto: boolean;    // true: 19%, false: 0% Exento
-    incluyeIva: boolean;  // true: con IVA, false: sin IVA
-    bodegaId: string;
-    ubicacionId: string;
   }>>([
     {
       key: '1',
@@ -97,16 +97,23 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       searchQuery: '',
       cantidad: '1',
       precioUnitario: '0',
-      esAfecto: true,
-      incluyeIva: true,
-      bodegaId: bodegas[0]?.id || '',
-      ubicacionId: bodegas[0]?.ubicaciones[0]?.id || '',
     }
   ]);
 
   const [activeItemSearchIndex, setActiveItemSearchIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+
+  // When header Bodega changes, set default Ubicacion to first location of that bodega
+  const handleHeaderBodegaChange = (newBodegaId: string) => {
+    setHeaderBodegaId(newBodegaId);
+    const selectedBod = bodegas.find(b => b.id === newBodegaId);
+    if (selectedBod && selectedBod.ubicaciones.length > 0) {
+      setHeaderUbicacionId(selectedBod.ubicaciones[0].id);
+    } else {
+      setHeaderUbicacionId('');
+    }
+  };
 
   // Auto-fill Razón Social if RUT matches existing provider
   useEffect(() => {
@@ -125,7 +132,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         removeAccents(p.razonSocial).includes(removeAccents(rutProveedor))
       ).slice(0, 5);
 
-  // Helper calculations for line item subtotal
+  // Helper calculations for line item subtotal using document-level tax settings
   const calculateItemSubtotal = (item: typeof items[0]) => {
     const cant = parseFloat(item.cantidad) || 0;
     const precio = parseFloat(item.precioUnitario) || 0;
@@ -133,8 +140,8 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
     if (cant <= 0 || precio <= 0) return 0;
 
     let subtotalFinal = cant * precio;
-    // If entered price does NOT include IVA and is Afecto (19%), add 19% to total
-    if (item.esAfecto && !item.incluyeIva) {
+    // If entered price does NOT include IVA and document is Afecto (19%), add 19%
+    if (headerEsAfecto && !headerIncluyeIva) {
       subtotalFinal = subtotalFinal * 1.19;
     }
     return Math.round(subtotalFinal);
@@ -153,10 +160,6 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         searchQuery: '',
         cantidad: '1',
         precioUnitario: '0',
-        esAfecto: true,
-        incluyeIva: true,
-        bodegaId: defaultBodegaId || bodegas[0]?.id || '',
-        ubicacionId: defaultUbicacionId || bodegas[0]?.ubicaciones[0]?.id || '',
       }
     ]);
   };
@@ -187,19 +190,20 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       return;
     }
 
+    if (!headerBodegaId || !headerUbicacionId) {
+      setStatus({ success: false, message: 'Por favor selecciona la bodega y ubicación de destino.' });
+      return;
+    }
+
     // Validate products
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (!item.productoId) {
-        setStatus({ success: false, message: `El producto en la fila #${i + 1} no es válido.` });
+        setStatus({ success: false, message: `El producto en la fila #${i + 1} no es válido o no ha sido seleccionado.` });
         return;
       }
       if ((parseInt(item.cantidad) || 0) <= 0) {
         setStatus({ success: false, message: `Ingresa una cantidad mayor a 0 en la fila #${i + 1}.` });
-        return;
-      }
-      if (!item.bodegaId || !item.ubicacionId) {
-        setStatus({ success: false, message: `Selecciona bodega y ubicación para la fila #${i + 1}.` });
         return;
       }
     }
@@ -211,11 +215,11 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       productoId: item.productoId,
       cantidad: parseInt(item.cantidad) || 1,
       precioUnitario: parseFloat(item.precioUnitario) || 0,
-      esAfecto: item.esAfecto,
-      incluyeIva: item.incluyeIva,
+      esAfecto: headerEsAfecto,
+      incluyeIva: headerIncluyeIva,
       subtotal: calculateItemSubtotal(item),
-      bodegaId: item.bodegaId,
-      ubicacionId: item.ubicacionId,
+      bodegaId: headerBodegaId,
+      ubicacionId: headerUbicacionId,
     }));
 
     const res = await createDocumentoMovimiento({
@@ -249,16 +253,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         searchQuery: '',
         cantidad: '1',
         precioUnitario: '0',
-        esAfecto: true,
-        incluyeIva: true,
-        bodegaId: defaultBodegaId || bodegas[0]?.id || '',
-        ubicacionId: defaultUbicacionId || bodegas[0]?.ubicaciones[0]?.id || '',
       }]);
       if (onSuccess) onSuccess();
     } else {
       setStatus({ success: false, message: res.error });
     }
   }
+
+  const selectedBodegaObj = bodegas.find(b => b.id === headerBodegaId);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -291,15 +293,15 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         </button>
       </div>
 
-      {/* 2. Document Header Info */}
+      {/* 2. Document Header Info & General Settings */}
       <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
           <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-          <span>1. Datos del Documento Tributario</span>
+          <span>1. Datos del Documento Tributario & Destino General</span>
         </h3>
 
+        {/* Row 1: Tipo Documento, Número, Fecha */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Tipo Documento */}
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
               {tipoDocumento === 'FACTURA' ? (
@@ -319,7 +321,6 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             </select>
           </div>
 
-          {/* Número Documento */}
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               N° de {tipoDocumento === 'FACTURA' ? 'Factura' : 'Guía'} *
@@ -334,7 +335,6 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             />
           </div>
 
-          {/* Fecha Documento */}
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
               Fecha Emisión *
@@ -349,7 +349,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           </div>
         </div>
 
-        {/* Proveedor RUT & Razón Social */}
+        {/* Row 2: Proveedor RUT & Razón Social */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative">
           <div className="relative">
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
@@ -403,7 +403,105 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           </div>
         </div>
 
-        {/* Monto Total & Checkbox de Recepción Incompleta */}
+        {/* Row 3: Destino General (Bodega y Ubicación Físico) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+              <Warehouse className="h-3.5 w-3.5 text-teal-600" />
+              <span>Bodega de Destino General *</span>
+            </label>
+            <select
+              value={headerBodegaId}
+              onChange={(e) => handleHeaderBodegaChange(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+            >
+              {bodegas.map(b => (
+                <option key={b.id} value={b.id}>{b.nombre}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
+              <MapPin className="h-3.5 w-3.5 text-teal-600" />
+              <span>Ubicación Física de Destino *</span>
+            </label>
+            <select
+              value={headerUbicacionId}
+              onChange={(e) => setHeaderUbicacionId(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+            >
+              {(selectedBodegaObj?.ubicaciones || []).map(u => (
+                <option key={u.id} value={u.id}>{u.nombre}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 4: Tratamiento Tributario de Impuesto (Afecto/Exento & IVA Inc/Neto) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              Tratamiento de Impuesto del Documento *
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setHeaderEsAfecto(true)}
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  headerEsAfecto 
+                    ? 'bg-teal-600 text-white shadow-xs' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                Afecto 19% IVA
+              </button>
+              <button
+                type="button"
+                onClick={() => setHeaderEsAfecto(false)}
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  !headerEsAfecto 
+                    ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-xs' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                Exento 0% IVA
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              Modo Precios Ingresados en Desglose *
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setHeaderIncluyeIva(true)}
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  headerIncluyeIva 
+                    ? 'bg-indigo-600 text-white shadow-xs' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                Con IVA Incluido
+              </button>
+              <button
+                type="button"
+                onClick={() => setHeaderIncluyeIva(false)}
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                  !headerIncluyeIva 
+                    ? 'bg-indigo-600 text-white shadow-xs' 
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                Sin IVA (Neto)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 5: Monto Total & Checkbox de Recepción Incompleta */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
@@ -415,7 +513,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               required
               value={montoTotal}
               onChange={(e) => setMontoTotal(e.target.value)}
-              placeholder="Ej. 150000"
+              placeholder="Ej. 462256"
               className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-extrabold focus:ring-2 focus:ring-teal-500 outline-none"
             />
           </div>
@@ -466,12 +564,12 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         )}
       </div>
 
-      {/* 3. Desglose Multi-Producto Table */}
+      {/* 3. Desglose Multi-Producto Table (Lightweight Streamlined Rows) */}
       <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <Calculator className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-            <span>2. Desglose de Productos ({items.length})</span>
+            <span>2. Desglose Rápido de Productos ({items.length})</span>
           </h3>
 
           <button
@@ -501,9 +599,9 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             return (
               <div 
                 key={item.key}
-                className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-3 relative"
+                className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-2 relative"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
                   <span className="text-[10px] font-mono font-bold text-slate-400">
                     Fila #{idx + 1}
                   </span>
@@ -519,9 +617,9 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                   {/* Product Search Input */}
-                  <div className="md:col-span-5 relative">
+                  <div className="md:col-span-6 relative">
                     <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">
                       Producto *
                     </label>
@@ -631,79 +729,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
                     />
                   </div>
 
-                  {/* Subtotal Línea */}
-                  <div className="md:col-span-3 text-right">
+                  {/* Subtotal Con IVA */}
+                  <div className="md:col-span-2 text-right pt-2 md:pt-0">
                     <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">
-                      Subtotal Con IVA
+                      Subtotal {headerEsAfecto ? 'con IVA' : 'Exento'}
                     </label>
-                    <div className="px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-black text-teal-700 dark:text-teal-300 border border-slate-200 dark:border-slate-700">
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-100 font-mono py-1.5">
                       ${itemSubtotal.toLocaleString('es-CL')}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Line Item Options: IVA & Warehouse */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-                  {/* IVA Affect vs Exento */}
-                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                    <span className="font-bold text-slate-600 dark:text-slate-300">Impuesto:</span>
-                    <button
-                      type="button"
-                      onClick={() => updateItemRow(idx, { esAfecto: !item.esAfecto })}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-colors cursor-pointer ${
-                        item.esAfecto
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-amber-600 text-white'
-                      }`}
-                    >
-                      {item.esAfecto ? 'Afecto (19% IVA)' : 'Exento (0%)'}
-                    </button>
-                  </div>
-
-                  {/* Prices Include IVA Toggle */}
-                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                    <span className="font-bold text-slate-600 dark:text-slate-300">Precio unitario es:</span>
-                    <button
-                      type="button"
-                      onClick={() => updateItemRow(idx, { incluyeIva: !item.incluyeIva })}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold transition-colors cursor-pointer ${
-                        item.incluyeIva
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-700 text-white'
-                      }`}
-                    >
-                      {item.incluyeIva ? 'Con IVA Inc.' : 'Sin IVA (Neto)'}
-                    </button>
-                  </div>
-
-                  {/* Destination Warehouse */}
-                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 px-2 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                    <select
-                      value={item.bodegaId}
-                      onChange={(e) => {
-                        const newBodegaId = e.target.value;
-                        const b = bodegas.find(b => b.id === newBodegaId);
-                        updateItemRow(idx, { 
-                          bodegaId: newBodegaId, 
-                          ubicacionId: b?.ubicaciones[0]?.id || '' 
-                        });
-                      }}
-                      className="w-full bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-100 outline-none"
-                    >
-                      {bodegas.map(b => (
-                        <option key={b.id} value={b.id} className="bg-white dark:bg-slate-800">{b.nombre}</option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={item.ubicacionId}
-                      onChange={(e) => updateItemRow(idx, { ubicacionId: e.target.value })}
-                      className="w-full bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-100 outline-none"
-                    >
-                      {(bodegas.find(b => b.id === item.bodegaId)?.ubicaciones || []).map(u => (
-                        <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800">{u.nombre}</option>
-                      ))}
-                    </select>
+                    </p>
                   </div>
                 </div>
               </div>
