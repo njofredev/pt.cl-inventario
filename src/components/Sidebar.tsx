@@ -17,7 +17,12 @@ import {
   Tag,
   Scale,
   Warehouse,
-  Clock
+  Clock,
+  CalendarDays,
+  ShoppingCart,
+  ClipboardCheck,
+  TrendingUp,
+  Sparkles
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -116,6 +121,15 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       ]
     },
     {
+      title: "NOVEDADES 2026",
+      items: [
+        { href: "/novedades/vencimientos", label: "Control Vencimientos", icon: CalendarDays, roles: ["ADMIN", "OPERADOR", "CONTABLE"], badge: "NUEVO" },
+        { href: "/novedades/reposicion", label: "Sugerido de Compras", icon: ShoppingCart, roles: ["ADMIN", "OPERADOR", "CONTABLE"], badge: "MVP" },
+        { href: "/novedades/arqueo", label: "Toma Física y Mermas", icon: ClipboardCheck, roles: ["ADMIN", "OPERADOR"], badge: "MVP" },
+        { href: "/novedades/kardex", label: "Kardex Valorizado", icon: TrendingUp, roles: ["ADMIN", "CONTABLE"], badge: "MVP" },
+      ]
+    },
+    {
       title: "ADMINISTRACIÓN",
       items: [
         { href: "/cuadros", label: "Cuadros Comparativos", icon: Scale, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
@@ -154,31 +168,49 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
 
             return (
               <div key={gIdx} className="space-y-1">
-                <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1">
-                  {group.title}
+                <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1 flex items-center justify-between">
+                  <span>{group.title}</span>
+                  {group.title.includes("NOVEDADES") && (
+                    <Sparkles className="h-3 w-3 text-amber-500 animate-pulse" />
+                  )}
                 </p>
 
                 <nav className="space-y-1">
                   {filteredItems.map((item) => {
                     const isActive = pathname === item.href;
                     const Icon = item.icon;
+                    const itemWithBadge = item as typeof item & { badge?: string };
 
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-200 group active-scale-down ${
+                        className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
                           isActive 
                             ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25" 
                             : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
                         }`}
                       >
-                        <Icon className={`h-5 w-5 shrink-0 transition-colors ${
-                          isActive 
-                            ? "text-white" 
-                            : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
-                        }`} />
-                        <span className="truncate">{item.label}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                            isActive 
+                              ? "text-white" 
+                              : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                          }`} />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+
+                        {itemWithBadge.badge && (
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
+                            isActive 
+                              ? "bg-white text-emerald-800"
+                              : itemWithBadge.badge === 'NUEVO'
+                              ? "bg-emerald-500 text-white"
+                              : "bg-indigo-500/80 text-white"
+                          }`}>
+                            {itemWithBadge.badge}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
