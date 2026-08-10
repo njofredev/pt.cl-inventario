@@ -228,3 +228,52 @@ export async function searchSimilarProductsAction(query: string) {
     return [];
   }
 }
+
+export async function quickCreateProductAction(input: {
+  codigo?: string;
+  nombre: string;
+  unidad?: string;
+  unidadCompra?: string;
+  unidadesPorEnvase?: number;
+}) {
+  try {
+    const nombre = input.nombre.trim();
+    if (!nombre) return { error: "El nombre del producto es obligatorio." };
+
+    let codigo = input.codigo?.trim().toUpperCase();
+
+    // If no code provided, generate auto code
+    if (!codigo) {
+      const count = await prisma.product.count();
+      codigo = `PROD-${(count + 1).toString().padStart(4, "0")}`;
+    }
+
+    const existing = await prisma.product.findUnique({
+      where: { codigo },
+    });
+
+    if (existing) {
+      const timestamp = Date.now().toString().slice(-4);
+      codigo = `${codigo}-${timestamp}`;
+    }
+
+    const newProduct = await prisma.product.create({
+      data: {
+        codigo,
+        nombre,
+        unidad: input.unidad?.trim() || "UND",
+        unidadCompra: input.unidadCompra?.trim() || null,
+        unidadesPorEnvase: input.unidadesPorEnvase || 1,
+        stockCritico: 5,
+      },
+    });
+
+    revalidatePath("/productos");
+    revalidatePath("/movimientos");
+    return { success: true, product: JSON.parse(JSON.stringify(newProduct)) };
+  } catch (error: any) {
+    console.error("Error in quickCreateProductAction:", error);
+    return { error: error.message || "Error al registrar el nuevo producto." };
+  }
+}
+

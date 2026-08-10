@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { createDocumentoMovimiento, DocumentItemInput } from './docActions';
+import QuickCreateProductModal from '@/components/QuickCreateProductModal';
 
 interface ProductOption {
   id: string;
@@ -52,6 +53,13 @@ function removeAccents(str: string): string {
 }
 
 export default function MovimientoComprasForm({ products, bodegas, proveedores, onSuccess }: Props) {
+  const [productsList, setProductsList] = useState<ProductOption[]>(products);
+  const [quickCreateModal, setQuickCreateModal] = useState<{
+    isOpen: boolean;
+    rowIdx: number;
+    searchQuery: string;
+  }>({ isOpen: false, rowIdx: -1, searchQuery: '' });
+
   const [categoria, setCategoria] = useState<'COMPRA' | 'OTRO'>('COMPRA');
   const [tipoDocumento, setTipoDocumento] = useState<'FACTURA' | 'GUIA_DESPACHO'>('FACTURA');
   const [numeroDocumento, setNumeroDocumento] = useState('');
@@ -480,12 +488,15 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         <div className="space-y-3">
           {items.map((item, idx) => {
             const itemSubtotal = calculateItemSubtotal(item);
-            const filteredItemProducts = item.searchQuery.trim() === ''
+            const rawQuery = item.searchQuery.trim();
+            const filteredItemProducts = rawQuery === ''
               ? []
-              : products.filter(p =>
-                  removeAccents(p.nombre).includes(removeAccents(item.searchQuery)) ||
-                  removeAccents(p.codigo).includes(removeAccents(item.searchQuery))
-                ).slice(0, 6);
+              : productsList.filter(p =>
+                  removeAccents(p.nombre).includes(removeAccents(rawQuery)) ||
+                  removeAccents(p.codigo).includes(removeAccents(rawQuery))
+                ).slice(0, 10);
+
+            const isExactMatchSelected = item.productoId !== '';
 
             return (
               <div 
@@ -530,24 +541,64 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
                     </div>
 
                     {/* Autocomplete list for item */}
-                    {activeItemSearchIndex === idx && filteredItemProducts.length > 0 && (
-                      <div className="absolute z-40 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
-                        {filteredItemProducts.map(p => (
-                          <div
-                            key={p.id}
-                            onClick={() => {
-                              updateItemRow(idx, {
-                                productoId: p.id,
-                                searchQuery: `[${p.codigo}] ${p.nombre}`,
-                              });
-                              setActiveItemSearchIndex(null);
-                            }}
-                            className="p-2.5 text-xs hover:bg-teal-50 dark:hover:bg-slate-700 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex justify-between items-center"
-                          >
-                            <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">[{p.codigo}]</span>
-                            <span className="truncate text-slate-700 dark:text-slate-200 ml-2 font-bold">{p.nombre}</span>
+                    {activeItemSearchIndex === idx && (
+                      <div className="absolute z-40 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in slide-in-from-top-1 duration-150">
+                        {filteredItemProducts.length > 0 ? (
+                          <>
+                            <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                              {filteredItemProducts.map(p => (
+                                <div
+                                  key={p.id}
+                                  onClick={() => {
+                                    updateItemRow(idx, {
+                                      productoId: p.id,
+                                      searchQuery: `[${p.codigo}] ${p.nombre}`,
+                                    });
+                                    setActiveItemSearchIndex(null);
+                                  }}
+                                  className="p-2.5 text-xs hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex justify-between items-center transition-colors"
+                                >
+                                  <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">[{p.codigo}]</span>
+                                  <span className="truncate text-slate-700 dark:text-slate-200 ml-2 font-bold flex-1">{p.nombre}</span>
+                                  {p.unidad && (
+                                    <span className="text-[9px] font-extrabold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0 ml-1">
+                                      {p.unidad}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQuickCreateModal({ isOpen: true, rowIdx: idx, searchQuery: rawQuery });
+                                setActiveItemSearchIndex(null);
+                              }}
+                              className="w-full p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-teal-600 dark:text-teal-400 font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-t border-slate-100 dark:border-slate-800"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span>¿No está en la lista? Crear producto nuevo</span>
+                            </button>
+                          </>
+                        ) : rawQuery.length > 0 && !isExactMatchSelected ? (
+                          <div className="p-3 bg-amber-50/80 dark:bg-slate-800/90 text-center space-y-2">
+                            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                              ⚠️ El producto "{rawQuery}" no existe en la base de datos.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQuickCreateModal({ isOpen: true, rowIdx: idx, searchQuery: rawQuery });
+                                setActiveItemSearchIndex(null);
+                              }}
+                              className="w-full py-2 px-3 bg-[#05b875] hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md transition-all active-scale-down cursor-pointer"
+                            >
+                              <Plus className="h-4 w-4" />
+                              <span>Crear "{rawQuery}" en el Catálogo</span>
+                            </button>
                           </div>
-                        ))}
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -719,6 +770,24 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           <span>Registrar Movimiento y Documento</span>
         )}
       </button>
+
+      {/* Quick Create Product Popup Modal */}
+      <QuickCreateProductModal
+        isOpen={quickCreateModal.isOpen}
+        initialSearchQuery={quickCreateModal.searchQuery}
+        onClose={() => setQuickCreateModal({ isOpen: false, rowIdx: -1, searchQuery: '' })}
+        onProductCreated={(newProd) => {
+          // Add to local product list options
+          setProductsList(prev => [...prev, newProd]);
+          // Auto select in row
+          if (quickCreateModal.rowIdx >= 0) {
+            updateItemRow(quickCreateModal.rowIdx, {
+              productoId: newProd.id,
+              searchQuery: `[${newProd.codigo}] ${newProd.nombre}`,
+            });
+          }
+        }}
+      />
     </form>
   );
 }
