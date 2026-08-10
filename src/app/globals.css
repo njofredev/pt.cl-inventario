@@ -52,6 +52,13 @@
     --color-clinical-bg: #09090b;
   }
 
+  /* Smooth Theme Transition across all elements */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 350ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   body {
     background-color: var(--background);
     color: var(--foreground);

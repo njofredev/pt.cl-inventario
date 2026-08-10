@@ -79,9 +79,9 @@ model CentroCosto {
 
 // 5. Maestro de Proveedores
 model Proveedor {
-  id               String       @id @default(cuid())
-  codigo           String?      @unique
-  rut              String       @unique
+  id               String                @id @default(cuid())
+  codigo           String?               @unique
+  rut              String                @unique
   razonSocial      String
   condicionPago    String?
   direccion        String?
@@ -89,9 +89,10 @@ model Proveedor {
   email            String?
   telefono         String?
   sedesRegistradas String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
   movimientos      Movimiento[]
+  documentos       DocumentoMovimiento[]
 }
 
 // 6. Tipos de Movimientos (Entrada Compra, Regalo, Ajuste Entrada, Consumo, Baja, Ajuste Salida)
@@ -106,36 +107,37 @@ model TipoMovimiento {
 
 // 7. Maestro de Productos
 model Product {
-  id               String          @id @default(cuid())
-  codigo           String          @unique
+  id               String                  @id @default(cuid())
+  codigo           String                  @unique
   nombre           String
   clasificacion    String?
   tipoProducto     String?
-  unidad           String?         // ej. Unidad, Caja, Frasco
-  ppp              Float           @default(0.0) // Precio Promedio Ponderado
-  costoNeto        Float           @default(0.0) // Costo neto unitario
-  stockCritico       Int             @default(0)   // Stock mínimo alertable
+  unidad           String?                 // ej. Unidad, Caja, Frasco
+  ppp              Float                   @default(0.0) // Precio Promedio Ponderado
+  costoNeto        Float                   @default(0.0) // Costo neto unitario
+  stockCritico       Int                     @default(0)   // Stock mínimo alertable
   
   // Conversión de Unidades de Compra a Consumo
   unidadCompra       String?
-  unidadesPorEnvase  Int             @default(1)
+  unidadesPorEnvase  Int                     @default(1)
   unidadEnvase       String?
-  unidadesPorConsumo Int             @default(1)
+  unidadesPorConsumo Int                     @default(1)
 
   cuentaContableId String?
-  cuentaContable   CuentaContable? @relation(fields: [cuentaContableId], references: [id])
+  cuentaContable   CuentaContable?         @relation(fields: [cuentaContableId], references: [id])
 
   // Vencimiento y Lote
-  tieneVencimiento Boolean         @default(false)
+  tieneVencimiento Boolean                 @default(false)
   fechaVencimiento DateTime?
   lote             String?
 
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
   stocks           Stock[]
   movimientos      Movimiento[]
   solicitudItems   SolicitudItem[]
   cuadroItems      CuadroComparativoItem[]
+  documentoItems   DocumentoMovimientoItem[]
 }
 
 // 8. Control de Stock por Ubicación Física
@@ -152,32 +154,76 @@ model Stock {
   @@unique([productoId, bodegaId, ubicacionId])
 }
 
-// 9. Histórico de Movimientos (Entradas, Salidas, Ajustes)
-model Movimiento {
-  id               String         @id @default(cuid())
-  fecha            DateTime       @default(now())
-  productoId       String
-  tipoMovimientoId String
-  cantidad         Int
-  valorUnitario    Float          @default(0.0) // Valor neto unitario de la compra/ajuste
-  pppCalculado     Float          @default(0.0) // PPP resultante o actual a la fecha
-  bodegaId         String?
-  ubicacionId      String?
-  centroCostoId    String?
-  proveedorId      String?
-  usuarioId        String         // Usuario que realiza la acción
-  recibidoPor      String?        // Persona que recibe los materiales (Consumos)
-  documentoTipo    String?        // FACTURA, GUIA_DESPACHO, etc.
-  documentoNumero  String?
-  createdAt        DateTime       @default(now())
+// 9. Encabezado de Documentos de Movimiento (Compras / Guías / Facturas)
+model DocumentoMovimiento {
+  id                      String                    @id @default(cuid())
+  categoria               String                    @default("COMPRA") // 'COMPRA' o 'OTRO'
+  tipoDocumento           String                    // 'FACTURA' o 'GUIA_DESPACHO'
+  numeroDocumento         String
+  fechaDocumento          DateTime                  @default(now())
+  proveedorId             String?
+  proveedor               Proveedor?                @relation(fields: [proveedorId], references: [id])
+  montoTotal              Float                     @default(0.0) // Total con IVA incluido
+  estadoConciliacion      String                    @default("CUADRADO") // 'CUADRADO', 'PENDIENTE_FACTURA', 'REQUIERE_NOTA_CREDITO'
+  
+  // Datos de enganche Factura -> Guía
+  facturaEnganchadaNumero String?
+  facturaEnganchadaFecha  DateTime?
 
-  product          Product        @relation(fields: [productoId], references: [id])
-  tipoMovimiento   TipoMovimiento @relation(fields: [tipoMovimientoId], references: [id])
-  bodega           Bodega?        @relation(fields: [bodegaId], references: [id])
-  ubicacion        Ubicacion?     @relation(fields: [ubicacionId], references: [id])
-  centroCosto      CentroCosto?   @relation(fields: [centroCostoId], references: [id])
-  proveedor        Proveedor?     @relation(fields: [proveedorId], references: [id])
-  usuario          User           @relation(fields: [usuarioId], references: [id])
+  // Datos de Notas de Crédito / Observaciones
+  observaciones           String?
+  esRecepcionIncompleta   Boolean                   @default(false)
+
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  items                   DocumentoMovimientoItem[]
+  movimientos             Movimiento[]
+}
+
+model DocumentoMovimientoItem {
+  id                    String              @id @default(cuid())
+  documentoMovimientoId String
+  documentoMovimiento   DocumentoMovimiento @relation(fields: [documentoMovimientoId], references: [id], onDelete: Cascade)
+  productoId            String
+  producto              Product             @relation(fields: [productoId], references: [id])
+  cantidad              Int
+  precioUnitario        Float               @default(0.0)
+  esAfecto              Boolean             @default(true) // true: 19% IVA, false: Exento (0%)
+  incluyeIva            Boolean             @default(true)
+  subtotal              Float               @default(0.0)
+  bodegaId              String?
+  ubicacionId           String?
+}
+
+// 10. Histórico de Movimientos (Entradas, Salidas, Ajustes)
+model Movimiento {
+  id                    String               @id @default(cuid())
+  fecha                 DateTime             @default(now())
+  productoId            String
+  tipoMovimientoId      String
+  cantidad              Int
+  valorUnitario         Float                @default(0.0) // Valor neto unitario de la compra/ajuste
+  pppCalculado          Float                @default(0.0) // PPP resultante o actual a la fecha
+  bodegaId              String?
+  ubicacionId           String?
+  centroCostoId         String?
+  proveedorId           String?
+  usuarioId             String               // Usuario que realiza la acción
+  recibidoPor           String?              // Persona que recibe los materiales (Consumos)
+  documentoTipo         String?              // FACTURA, GUIA_DESPACHO, etc.
+  documentoNumero       String?
+  documentoMovimientoId String?
+  createdAt             DateTime             @default(now())
+
+  product               Product              @relation(fields: [productoId], references: [id])
+  tipoMovimiento        TipoMovimiento       @relation(fields: [tipoMovimientoId], references: [id])
+  bodega                Bodega?              @relation(fields: [bodegaId], references: [id])
+  ubicacion             Ubicacion?           @relation(fields: [ubicacionId], references: [id])
+  centroCosto           CentroCosto?         @relation(fields: [centroCostoId], references: [id])
+  proveedor             Proveedor?           @relation(fields: [proveedorId], references: [id])
+  usuario               User                 @relation(fields: [usuarioId], references: [id])
+  documentoMovimiento   DocumentoMovimiento? @relation(fields: [documentoMovimientoId], references: [id])
 }
 
 // 10. Solicitudes Públicas de Materiales (localhost:3000/solicitar)

@@ -13,9 +13,11 @@ import {
   LogOut,
   Sun,
   Moon,
+  CloudSun,
   Tag,
   Scale,
-  Warehouse
+  Warehouse,
+  Clock
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -29,6 +31,10 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
   const pathname = usePathname();
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
+  const [greetPeriod, setGreetPeriod] = useState<'MORNING' | 'AFTERNOON' | 'NIGHT'>('AFTERNOON');
+  const [greetText, setGreetText] = useState<string>('Buenas tardes');
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -40,6 +46,49 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       document.documentElement.classList.remove("dark");
     }
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      
+      const timeStr = now.toLocaleTimeString('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      
+      const rawDate = now.toLocaleDateString('es-CL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short'
+      });
+      const dateParts = rawDate.replace('.', '').toUpperCase();
+      
+      const hours = now.getHours();
+      let text = 'Buenas tardes';
+      let period: 'MORNING' | 'AFTERNOON' | 'NIGHT' = 'AFTERNOON';
+      if (hours >= 6 && hours < 12) {
+        text = 'Buenos días';
+        period = 'MORNING';
+      } else if (hours >= 12 && hours < 20) {
+        text = 'Buenas tardes';
+        period = 'AFTERNOON';
+      } else {
+        text = 'Buenas noches';
+        period = 'NIGHT';
+      }
+
+      setCurrentTime(timeStr);
+      setCurrentDate(dateParts);
+      setGreetText(text);
+      setGreetPeriod(period);
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const toggleDarkMode = () => {
@@ -56,7 +105,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
 
   const navGroups = [
     {
-      title: "INVENTARIO Y GESTIÓN",
+      title: "MENÚ PRINCIPAL",
       items: [
         { href: "/", label: "Panel de Control", icon: LayoutDashboard, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/productos", label: "Productos / Stock", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
@@ -77,44 +126,39 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-slate-50/90 dark:bg-[#0B1326] border-r border-slate-200/80 dark:border-slate-800 flex flex-col h-screen fixed inset-y-0 left-0 justify-between select-none z-30 transition-colors duration-200 font-sans">
+    <aside className="hidden md:flex flex-col fixed top-3 bottom-3 left-3 w-[270px] bg-white border border-slate-200/80 dark:bg-[#070e1e] dark:border-[#172545] rounded-[26px] shadow-xl shadow-slate-200/50 dark:shadow-2xl justify-between select-none z-30 overflow-hidden font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
-      {/* Upper Content */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+      {/* Scrollable Upper Area */}
+      <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar px-3 pt-4 pb-2">
         
         {/* Header / Brand */}
-        <div className="p-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-[#0E172E] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#131E3A] border border-slate-200 dark:border-slate-700/80 shadow-xs flex items-center justify-center p-1.5 shrink-0">
-              <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xs font-black tracking-tight text-slate-900 dark:text-slate-100 truncate">
-                Policlínico Tabancura
-              </h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                <span className="text-[9px] font-extrabold tracking-wider text-teal-700 dark:text-teal-400 uppercase">
-                  Control Inventario
-                </span>
-              </div>
-            </div>
+        <div className="flex items-center gap-3 px-2 pb-4 mb-2">
+          <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-2 shrink-0 shadow-xs">
+            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight leading-snug truncate">
+              Policlínico Tabancura
+            </h1>
+            <p className="text-[10px] font-black tracking-wider text-teal-600 dark:text-[#00e699] uppercase leading-tight">
+              CONTROL INVENTARIO
+            </p>
           </div>
         </div>
 
-        {/* Navigation Sections */}
-        <div className="p-3 space-y-5">
+        {/* Navigation Groups */}
+        <div className="space-y-4">
           {navGroups.map((group, gIdx) => {
             const filteredItems = group.items.filter(item => item.roles.includes(user.role));
             if (filteredItems.length === 0) return null;
 
             return (
               <div key={gIdx} className="space-y-1">
-                <p className="text-[9px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase px-3 py-1">
+                <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1">
                   {group.title}
                 </p>
 
-                <nav className="space-y-0.5">
+                <nav className="space-y-1">
                   {filteredItems.map((item) => {
                     const isActive = pathname === item.href;
                     const Icon = item.icon;
@@ -123,24 +167,18 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex items-center justify-between px-3 py-2.5 text-xs font-bold rounded-xl transition-all duration-150 group active-scale-down ${
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-full transition-all duration-200 group active-scale-down ${
                           isActive 
-                            ? "bg-[#227262] text-white shadow-sm shadow-teal-950/20" 
-                            : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-white"
+                            ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25" 
+                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon className={`h-4 w-4 shrink-0 transition-colors ${
-                            isActive 
-                              ? "text-white" 
-                              : "text-slate-400 dark:text-slate-400 group-hover:text-teal-600 dark:group-hover:text-teal-400"
-                          }`} />
-                          <span className="truncate">{item.label}</span>
-                        </div>
-
-                        {isActive && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white shadow-xs" />
-                        )}
+                        <Icon className={`h-5 w-5 shrink-0 transition-colors ${
+                          isActive 
+                            ? "text-white" 
+                            : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                        }`} />
+                        <span className="truncate">{item.label}</span>
                       </Link>
                     );
                   })}
@@ -151,56 +189,76 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
         </div>
       </div>
 
-      {/* Footer / User Profile & Controls */}
-      <div className="border-t border-slate-200/80 dark:border-slate-800/80 p-3 space-y-2 bg-white/80 dark:bg-[#0E172E] backdrop-blur-md">
+      {/* Bottom Fixed Area */}
+      <div className="px-3 pb-3 pt-2 space-y-3 bg-slate-50/50 dark:bg-[#070e1e] border-t border-slate-200/80 dark:border-[#172545]/60 transition-colors">
         
         {/* User Card */}
-        <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/80 dark:bg-[#131E3A]">
-          <div className="w-8 h-8 rounded-lg bg-teal-600 dark:bg-teal-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="w-9 h-9 rounded-full bg-teal-100 border border-teal-300 text-teal-800 dark:bg-[#044232] dark:border-[#05b875]/40 dark:text-[#05b875] font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
             {user.nombre.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 truncate leading-tight">
+            <p className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">
               {user.nombre}
             </p>
-            <span className="inline-block text-[9px] font-bold text-teal-700 dark:text-teal-400 uppercase tracking-wider">
-              {user.role}
-            </span>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize leading-tight">
+              {user.role === 'ADMIN' ? 'Administrador' : user.role.toLowerCase()}
+            </p>
           </div>
         </div>
 
-        {/* System Theme Toggle Bar */}
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-[#131E3A]/60">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-            {mounted && darkMode ? (
-              <Moon className="h-3.5 w-3.5 text-teal-400" />
+        {/* Live Clock / Date Card Widget */}
+        <div className="p-3.5 rounded-2xl bg-slate-100/80 border border-slate-200/90 dark:bg-[#0b162f] dark:border-[#172648] relative space-y-1 shadow-xs dark:shadow-inner transition-colors">
+          <Clock className="w-4 h-4 text-[#05b875] absolute top-3.5 right-3.5" />
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+            <span>{greetText}</span>
+            {greetPeriod === 'MORNING' ? (
+              <Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+            ) : greetPeriod === 'AFTERNOON' ? (
+              <CloudSun className="h-3.5 w-3.5 text-amber-400 shrink-0" />
             ) : (
-              <Sun className="h-3.5 w-3.5 text-amber-500" />
+              <Moon className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
             )}
-            <span className="text-[11px] font-bold">Modo Oscuro</span>
-          </div>
-
-          <button 
-            type="button"
-            onClick={toggleDarkMode}
-            aria-label="Cambiar Tema"
-            className={`w-8 h-4.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none cursor-pointer ${
-              darkMode ? 'bg-teal-600' : 'bg-slate-300'
-            }`}
-          >
-            <div className={`bg-white w-3.5 h-3.5 rounded-full shadow-sm transform transition-transform duration-200 ${
-              darkMode ? 'translate-x-3.5' : 'translate-x-0'
-            }`} />
-          </button>
+          </p>
+          <p className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight font-mono">
+            {currentTime || '12:00:00 p.m.'}
+          </p>
+          <p className="text-[10px] font-extrabold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+            {currentDate || 'CARGANDO...'}
+          </p>
         </div>
 
-        {/* Explicit Form-based Logout Button */}
+        {/* Theme Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleDarkMode}
+          className="w-full rounded-full bg-slate-100/80 border border-slate-200/90 dark:bg-[#0b162f] dark:border-[#172648] px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 dark:hover:border-[#223863] transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            {mounted && darkMode ? (
+              <Moon className="h-4 w-4 text-teal-400" />
+            ) : (
+              <Sun className="h-4 w-4 text-amber-500" />
+            )}
+            <span>{mounted && darkMode ? 'Modo Oscuro' : 'Modo Claro'}</span>
+          </div>
+
+          <div className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ${
+            darkMode ? 'bg-[#05b875]' : 'bg-slate-300'
+          }`}>
+            <div className={`bg-white w-4 h-4 rounded-full shadow-xs transform transition-transform duration-200 ${
+              darkMode ? 'translate-x-4' : 'translate-x-0'
+            }`} />
+          </div>
+        </button>
+
+        {/* Logout Button */}
         <form action={logoutAction} className="m-0 p-0 w-full">
           <button 
             type="submit"
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/60 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-4 py-2 text-sm font-bold text-rose-600 dark:text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition-colors cursor-pointer"
           >
-            <LogOut className="h-3.5 w-3.5" />
+            <LogOut className="h-4 w-4 text-rose-600 dark:text-rose-500" />
             <span>Cerrar Sesión</span>
           </button>
         </form>
@@ -209,3 +267,4 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
     </aside>
   );
 }
+

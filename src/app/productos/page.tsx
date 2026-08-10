@@ -11,6 +11,10 @@ interface PageProps {
 
 export const revalidate = 0;
 
+function removeAccents(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 export default async function ProductosPage(props: PageProps) {
   const searchParams = await props.searchParams;
   const search = searchParams.search || "";
@@ -27,33 +31,30 @@ export default async function ProductosPage(props: PageProps) {
     orderBy: { nombre: "asc" },
   });
 
-  // Build query filter
-  const where: any = search
-    ? {
-      OR: [
-        { nombre: { contains: search, mode: "insensitive" } },
-        { codigo: { contains: search, mode: "insensitive" } },
-      ],
-    }
-    : {};
-
-  // Fetch paginated products with stocks and account
-  const products = await prisma.product.findMany({
-    where,
+  // Fetch all products to perform accent-folded filtering
+  const allProducts = await prisma.product.findMany({
     include: {
       stocks: true,
       cuentaContable: true,
     },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
     orderBy: { nombre: "asc" },
   });
 
-  const totalItems = await prisma.product.count({ where });
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const normSearch = removeAccents(search.trim());
+
+  const filteredProducts = search.trim()
+    ? allProducts.filter((p) =>
+        removeAccents(p.nombre).includes(normSearch) ||
+        removeAccents(p.codigo).includes(normSearch)
+      )
+    : allProducts;
+
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const paginatedProducts = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
 
   // Compute stock total dynamically for display
-  const productsWithStock = products.map((p) => {
+  const productsWithStock = paginatedProducts.map((p) => {
     const stockTotal = p.stocks.reduce((acc, curr) => acc + curr.cantidad, 0);
     return {
       ...p,

@@ -45,11 +45,17 @@ export default function ProductSearchableInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  function removeAccents(str: string): string {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  const normQuery = removeAccents(query.trim());
+
   const filteredProducts = query.trim() === ''
     ? products.slice(0, 15)
     : products.filter(p =>
-        p.nombre.toLowerCase().includes(query.toLowerCase()) ||
-        p.codigo.toLowerCase().includes(query.toLowerCase())
+        removeAccents(p.nombre).includes(normQuery) ||
+        removeAccents(p.codigo).includes(normQuery)
       ).slice(0, 15);
 
   const handleSelectProduct = (p: Product) => {

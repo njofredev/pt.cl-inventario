@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Eye, Database, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, Database, Search, X, Loader2, ArrowRight, ChevronsUpDown } from "lucide-react";
 import ProductDetailModal from "./ProductDetailModal";
 
 interface ProductWithStock {
@@ -36,23 +37,197 @@ export default function ClientProductsList({
   page,
   totalPages,
 }: ClientProductsListProps) {
+  const router = useRouter();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [query, setQuery] = useState(search);
+  const [suggestions, setSuggestions] = useState<ProductWithStock[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Sync prop changes (e.g. navigation) to query state
+  useEffect(() => {
+    setQuery(search);
+  }, [search]);
+
+  // Fetch live suggestions on query change with debouncing
+  useEffect(() => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      setSuggestions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const handler = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/products/suggestions?q=${encodeURIComponent(trimmedQuery)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+        }
+      } catch (err) {
+        console.error("Error fetching suggestions:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 150);
+
+    return () => clearTimeout(handler);
+  }, [query]);
+
+  const handleSelectSuggestion = (prod: ProductWithStock) => {
+    setQuery(prod.nombre);
+    setIsOpen(false);
+    router.push(`/productos?search=${encodeURIComponent(prod.nombre)}`);
+  };
+
+  const handleInspectSuggestion = (e: React.MouseEvent, prodId: string) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    setSelectedProductId(prodId);
+  };
+
+  const handleClearSearch = () => {
+    setQuery("");
+    setSuggestions([]);
+    setIsOpen(false);
+    router.push("/productos");
+  };
 
   return (
     <>
-      {/* Search Form */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-        <form method="GET" action="/productos" className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      {/* Search Form with Real-Time Autocomplete */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm relative">
+        <form 
+          method="GET" 
+          action="/productos" 
+          onSubmit={() => {
+            setIsOpen(false);
+          }}
+          className="flex gap-3"
+        >
+          <div ref={searchContainerRef} className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10 pointer-events-none" />
+            
             <input
               type="text"
               name="search"
-              defaultValue={search}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setIsOpen(true);
+              }}
+              onFocus={() => {
+                if (query.trim()) setIsOpen(true);
+              }}
               placeholder="Buscar por nombre o código..."
-              className="w-full pl-10 pr-4 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all font-medium"
+              autoComplete="off"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all font-medium"
             />
+
+            {/* Clear icon or Loader */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 text-teal-600 animate-spin" />
+              ) : query ? (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-md transition-colors"
+                  title="Limpiar búsqueda"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Autocomplete Dropdown List */}
+            {isOpen && query.trim().length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/80 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-3.5 py-2 bg-slate-50/80 dark:bg-slate-800/50 flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {suggestions.length > 0 ? `Coincidencias encontradas (${suggestions.length})` : 'Buscando productos...'}
+                  </span>
+                  <span className="text-[9px] font-medium text-slate-400 flex items-center gap-1">
+                    <span>Desliza para ver más</span>
+                    <ChevronsUpDown className="h-3 w-3 text-slate-400 shrink-0" />
+                  </span>
+                </div>
+
+                <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {isLoading && suggestions.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600" />
+                      <span>Buscando en el catálogo...</span>
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                      No se encontraron coincidencias para &quot;{query}&quot;.
+                    </div>
+                  ) : (
+                    suggestions.map((prod) => (
+                      <div
+                        key={prod.id}
+                        onClick={() => handleSelectSuggestion(prod)}
+                        className="p-3 hover:bg-teal-50/60 dark:hover:bg-slate-800/80 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-mono text-[10px] font-black text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/80 border border-teal-200/60 dark:border-teal-800/60 px-2 py-0.5 rounded-md shrink-0">
+                            {prod.codigo}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 truncate">
+                              {prod.nombre}
+                            </p>
+                            {prod.cuentaContable && (
+                              <p className="text-[10px] text-slate-400 font-medium truncate">
+                                Cuenta: {prod.cuentaContable.codigo} - {prod.cuentaContable.nombre}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                            prod.stockTotal === 0 
+                              ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800" 
+                              : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                          }`}>
+                            Stock: {prod.stockTotal}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleInspectSuggestion(e, prod.id)}
+                            className="p-1 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Ver Ficha DB"
+                          >
+                            <Database className="h-3.5 w-3.5" />
+                          </button>
+
+                          <ArrowRight className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:translate-x-0.5 transition-all" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
+
           <button
             type="submit"
             className="px-5 py-2.5 bg-slate-900 dark:bg-teal-600 hover:bg-black dark:hover:bg-teal-500 text-white font-extrabold rounded-xl text-xs transition-all active-scale-down shadow-sm cursor-pointer"

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { createTransaction } from './actions';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Package, Tag, Sparkles } from 'lucide-react';
 
 interface ProductOption {
   id: string;
@@ -172,24 +172,26 @@ export default function MovimientoForm({ products, bodegas, defaultTipo }: Props
             <button
               type="button"
               onClick={() => setModoUnidad('COMPRA')}
-              className={`py-1 text-[11px] font-bold rounded-md transition-all ${
+              className={`py-1 text-[11px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
                 modoUnidad === 'COMPRA'
                   ? 'bg-teal-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100'
               }`}
             >
-              📦 {selectedProduct.unidadCompra}
+              <Package className="h-3 w-3" />
+              <span>{selectedProduct.unidadCompra}</span>
             </button>
             <button
               type="button"
               onClick={() => setModoUnidad('CONSUMO')}
-              className={`py-1 text-[11px] font-bold rounded-md transition-all ${
+              className={`py-1 text-[11px] font-bold rounded-md transition-all flex items-center justify-center gap-1 ${
                 modoUnidad === 'CONSUMO'
                   ? 'bg-teal-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100'
               }`}
             >
-              🔹 {selectedProduct.unidad || 'Unidad'}
+              <Tag className="h-3 w-3" />
+              <span>{selectedProduct.unidad || 'Unidad'}</span>
             </button>
           </div>
         </div>
@@ -210,8 +212,9 @@ export default function MovimientoForm({ products, bodegas, defaultTipo }: Props
           className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
         />
         {tieneUnidadCompra && modoUnidad === 'COMPRA' && esEntrada && cantNum > 0 && (
-          <div className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 pt-1">
-            ✨ Equivale a <span className="font-bold underline">{cantidadFinalCalculada} {selectedProduct?.unidad || 'Unidades'}</span> a ingresar en el Stock.
+          <div className="text-[10px] font-semibold text-teal-700 dark:text-teal-300 pt-1 flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-teal-600 dark:text-teal-400 shrink-0" />
+            <span>Equivale a <span className="font-bold underline">{cantidadFinalCalculada} {selectedProduct?.unidad || 'Unidades'}</span> a ingresar en el Stock.</span>
           </div>
         )}
       </div>

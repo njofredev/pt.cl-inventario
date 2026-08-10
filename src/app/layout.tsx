@@ -40,7 +40,7 @@ export default async function RootLayout({
           <Sidebar user={user} logoutAction={logoutAction} />
 
           {/* Main content wrapper */}
-          <div className="flex flex-col flex-1 md:pl-64">
+          <div className="flex flex-col flex-1 md:pl-[295px]">
             {/* Mobile Header */}
             <header className="md:hidden flex items-center justify-between h-16 px-6 bg-white border-b border-slate-200 shadow-sm">
               <div className="flex items-center gap-2">
