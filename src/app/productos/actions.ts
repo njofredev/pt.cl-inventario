@@ -152,13 +152,23 @@ export async function getProductDetailsAction(id: string) {
           }
         },
         movimientos: {
-          take: 10,
-          orderBy: { fecha: 'desc' },
+          take: 20,
+          orderBy: [
+            { fecha: 'desc' },
+            { createdAt: 'desc' }
+          ],
           include: {
             tipoMovimiento: true,
             bodega: true,
             ubicacion: true,
-            usuario: true
+            usuario: true,
+            proveedor: true,
+            centroCosto: true,
+            documentoMovimiento: {
+              include: {
+                proveedor: true
+              }
+            }
           }
         }
       }

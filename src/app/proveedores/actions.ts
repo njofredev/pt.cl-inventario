@@ -47,3 +47,38 @@ export async function createProveedor(formData: FormData) {
     return { success: false, error: error.message || "Error al registrar el proveedor." };
   }
 }
+
+export async function updateProveedorAction(id: string, formData: FormData) {
+  try {
+    const rut = formData.get("rut")?.toString().trim();
+    const razonSocial = formData.get("razonSocial")?.toString().trim();
+    const contacto = formData.get("contacto")?.toString().trim() || null;
+    const email = formData.get("email")?.toString().trim() || null;
+    const telefono = formData.get("telefono")?.toString().trim() || null;
+    const direccion = formData.get("direccion")?.toString().trim() || null;
+    const condicionPago = formData.get("condicionPago")?.toString().trim() || null;
+
+    if (!id || !rut || !razonSocial) {
+      return { success: false, error: "El RUT y la Razón Social son obligatorios." };
+    }
+
+    await prisma.proveedor.update({
+      where: { id },
+      data: {
+        rut: rut.toUpperCase(),
+        razonSocial,
+        contacto,
+        email,
+        telefono,
+        direccion,
+        condicionPago,
+      },
+    });
+
+    revalidatePath("/proveedores");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating proveedor:", error);
+    return { success: false, error: error.message || "Error al actualizar el proveedor." };
+  }
+}

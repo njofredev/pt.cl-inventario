@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Search, 
-  Building2, 
-  FileText, 
+import {
+  Plus,
+  Trash2,
+  Search,
+  Building2,
+  FileText,
   Truck,
-  ReceiptText, 
-  AlertTriangle, 
-  CheckCircle2, 
+  ReceiptText,
+  AlertTriangle,
+  CheckCircle2,
   Calculator,
   Loader2,
   Warehouse,
@@ -66,7 +66,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
   const [tipoDocumento, setTipoDocumento] = useState<'FACTURA' | 'GUIA_DESPACHO'>('FACTURA');
   const [numeroDocumento, setNumeroDocumento] = useState('');
   const [fechaDocumento, setFechaDocumento] = useState(new Date().toISOString().split('T')[0]);
-  
+
   // Proveedor
   const [rutProveedor, setRutProveedor] = useState('');
   const [razonSocialProveedor, setRazonSocialProveedor] = useState('');
@@ -80,7 +80,6 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
 
   // Document Totals & Status
   const [montoTotal, setMontoTotal] = useState('');
-  const [esRecepcionIncompleta, setEsRecepcionIncompleta] = useState(false);
   const [observaciones, setObservaciones] = useState('');
 
   // Multi-item Breakdown (Lightweight rows)
@@ -127,16 +126,16 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
   // Provider Autocomplete filter
   const filteredProveedores = rutProveedor.trim() === ''
     ? []
-    : proveedores.filter(p => 
-        removeAccents(p.rut).includes(removeAccents(rutProveedor)) ||
-        removeAccents(p.razonSocial).includes(removeAccents(rutProveedor))
-      ).slice(0, 5);
+    : proveedores.filter(p =>
+      removeAccents(p.rut).includes(removeAccents(rutProveedor)) ||
+      removeAccents(p.razonSocial).includes(removeAccents(rutProveedor))
+    ).slice(0, 5);
 
   // Helper calculations for line item subtotal using document-level tax settings
   const calculateItemSubtotal = (item: typeof items[0]) => {
     const cant = parseFloat(item.cantidad) || 0;
     const precio = parseFloat(item.precioUnitario) || 0;
-    
+
     if (cant <= 0 || precio <= 0) return 0;
 
     let subtotalFinal = cant * precio;
@@ -190,8 +189,8 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       return;
     }
 
-    if (!headerBodegaId || !headerUbicacionId) {
-      setStatus({ success: false, message: 'Por favor selecciona la bodega y ubicación de destino.' });
+    if (!headerBodegaId) {
+      setStatus({ success: false, message: 'Por favor selecciona la bodega de destino.' });
       return;
     }
 
@@ -230,7 +229,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       rutProveedor: rutProveedor.trim(),
       razonSocialProveedor: razonSocialProveedor.trim(),
       montoTotal: montoDocumentoNum,
-      esRecepcionIncompleta,
+      esRecepcionIncompleta: false,
       observaciones: observaciones.trim(),
       items: payloadItems,
     });
@@ -238,15 +237,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
     setLoading(false);
 
     if (res.success) {
-      setStatus({ 
-        success: true, 
-        message: `Movimiento y documento #${numeroDocumento} registrado exitosamente.` 
+      setStatus({
+        success: true,
+        message: `Movimiento y documento #${numeroDocumento} registrado exitosamente.`
       });
       // Reset form
       setNumeroDocumento('');
       setMontoTotal('');
       setObservaciones('');
-      setEsRecepcionIncompleta(false);
       setItems([{
         key: Date.now().toString(),
         productoId: '',
@@ -269,27 +267,25 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
         <button
           type="button"
           onClick={() => setCategoria('COMPRA')}
-          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            categoria === 'COMPRA'
+          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${categoria === 'COMPRA'
               ? 'bg-[#05b875] text-white shadow-md shadow-[#05b875]/20'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-          }`}
+            }`}
         >
           <Building2 className="h-4 w-4" />
           <span>Ingreso por Compras</span>
         </button>
-        
+
         <button
           type="button"
           onClick={() => setCategoria('OTRO')}
-          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            categoria === 'OTRO'
+          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${categoria === 'OTRO'
               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-          }`}
+            }`}
         >
           <ReceiptText className="h-4 w-4" />
-          <span>Otro Tipo (Ajuste / Donación)</span>
+          <span>Otro Tipo (Ajuste)</span>
         </button>
       </div>
 
@@ -300,56 +296,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           <span>1. Datos del Documento Tributario & Destino General</span>
         </h3>
 
-        {/* Row 1: Tipo Documento, Número, Fecha */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-              {tipoDocumento === 'FACTURA' ? (
-                <FileText className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
-              ) : (
-                <Truck className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              )}
-              <span>Tipo de Documento *</span>
-            </label>
-            <select
-              value={tipoDocumento}
-              onChange={(e) => setTipoDocumento(e.target.value as any)}
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
-            >
-              <option value="FACTURA">Factura</option>
-              <option value="GUIA_DESPACHO">Guía de Despacho</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              N° de {tipoDocumento === 'FACTURA' ? 'Factura' : 'Guía'} *
-            </label>
-            <input
-              type="text"
-              required
-              value={numeroDocumento}
-              onChange={(e) => setNumeroDocumento(e.target.value)}
-              placeholder="Ej. 104582"
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Fecha Emisión *
-            </label>
-            <input
-              type="date"
-              required
-              value={fechaDocumento}
-              onChange={(e) => setFechaDocumento(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Row 2: Proveedor RUT & Razón Social */}
+        {/* Row 1: Proveedor RUT & Razón Social (Asked First) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative">
           <div className="relative">
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
@@ -403,6 +350,55 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           </div>
         </div>
 
+        {/* Row 2: Tipo Documento, Número, Fecha */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+              {tipoDocumento === 'FACTURA' ? (
+                <FileText className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+              ) : (
+                <Truck className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+              )}
+              <span>Tipo de Documento *</span>
+            </label>
+            <select
+              value={tipoDocumento}
+              onChange={(e) => setTipoDocumento(e.target.value as any)}
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+            >
+              <option value="FACTURA">Factura</option>
+              <option value="GUIA_DESPACHO">Guía de Despacho</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              N° de {tipoDocumento === 'FACTURA' ? 'Factura' : 'Guía'} *
+            </label>
+            <input
+              type="text"
+              required
+              value={numeroDocumento}
+              onChange={(e) => setNumeroDocumento(e.target.value)}
+              placeholder="Ej. 104582"
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+              Fecha Emisión *
+            </label>
+            <input
+              type="date"
+              required
+              value={fechaDocumento}
+              onChange={(e) => setFechaDocumento(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+          </div>
+        </div>
+
         {/* Row 3: Destino General (Bodega y Ubicación Físico) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
           <div>
@@ -424,13 +420,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
               <MapPin className="h-3.5 w-3.5 text-teal-600" />
-              <span>Ubicación Física de Destino *</span>
+              <span>Ubicación Física (Opcional)</span>
             </label>
             <select
               value={headerUbicacionId}
               onChange={(e) => setHeaderUbicacionId(e.target.value)}
               className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
             >
+              <option value="">General / Por Defecto</option>
               {(selectedBodegaObj?.ubicaciones || []).map(u => (
                 <option key={u.id} value={u.id}>{u.nombre}</option>
               ))}
@@ -448,22 +445,20 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               <button
                 type="button"
                 onClick={() => setHeaderEsAfecto(true)}
-                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                  headerEsAfecto 
-                    ? 'bg-teal-600 text-white shadow-xs' 
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${headerEsAfecto
+                    ? 'bg-teal-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Afecto 19% IVA
               </button>
               <button
                 type="button"
                 onClick={() => setHeaderEsAfecto(false)}
-                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                  !headerEsAfecto 
-                    ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-xs' 
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${!headerEsAfecto
+                    ? 'bg-slate-800 dark:bg-slate-700 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Exento 0% IVA
               </button>
@@ -478,22 +473,20 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               <button
                 type="button"
                 onClick={() => setHeaderIncluyeIva(true)}
-                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                  headerIncluyeIva 
-                    ? 'bg-indigo-600 text-white shadow-xs' 
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${headerIncluyeIva
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Con IVA Incluido
               </button>
               <button
                 type="button"
                 onClick={() => setHeaderIncluyeIva(false)}
-                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
-                  !headerIncluyeIva 
-                    ? 'bg-indigo-600 text-white shadow-xs' 
+                className={`py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${!headerIncluyeIva
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Sin IVA (Neto)
               </button>
@@ -501,44 +494,23 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           </div>
         </div>
 
-        {/* Row 5: Monto Total & Checkbox de Recepción Incompleta */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-          <div>
-            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
-              Total del Documento ($ IVA Incluido) *
-            </label>
-            <input
-              type="number"
-              min="0"
-              required
-              value={montoTotal}
-              onChange={(e) => setMontoTotal(e.target.value)}
-              placeholder="Ej. 462256"
-              className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-extrabold focus:ring-2 focus:ring-teal-500 outline-none"
-            />
-          </div>
-
-          <div className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
-                ¿Recepción Incompleta / Faltantes?
-              </span>
-              <span className="text-[10px] text-slate-400 block">
-                {tipoDocumento === 'GUIA_DESPACHO' 
-                  ? 'Permite recepcionar parcial y enganchar luego.' 
-                  : 'Genera aviso de Nota de Crédito por cobrar/recibir.'}
-              </span>
-            </div>
-            <input
-              type="checkbox"
-              checked={esRecepcionIncompleta}
-              onChange={(e) => setEsRecepcionIncompleta(e.target.checked)}
-              className="h-4 w-4 accent-teal-600 rounded cursor-pointer"
-            />
-          </div>
+        {/* Row 5: Monto Total del Documento */}
+        <div>
+          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
+            Total del Documento ($ IVA Incluido) *
+          </label>
+          <input
+            type="number"
+            min="0"
+            required
+            value={montoTotal}
+            onChange={(e) => setMontoTotal(e.target.value)}
+            placeholder="Ej. 462256"
+            className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-extrabold focus:ring-2 focus:ring-teal-500 outline-none"
+          />
         </div>
 
-        {/* Dynamic Alerts based on Document Type & Rules */}
+        {/* Dynamic Alert for Guía de Despacho */}
         {tipoDocumento === 'GUIA_DESPACHO' && (
           <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-medium flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
@@ -550,36 +522,15 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             </div>
           </div>
         )}
-
-        {tipoDocumento === 'FACTURA' && esRecepcionIncompleta && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300 text-xs font-medium flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-            <div>
-              <p className="font-bold">Alerta de Nota de Crédito Requerida:</p>
-              <p className="text-[11px] opacity-90">
-                Al indicar recepción incompleta sobre una Factura emitida, el sistema marcará este documento como <span className="font-bold underline">Requiere Nota de Crédito</span> por el valor de los productos faltantes.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 3. Desglose Multi-Producto Table (Lightweight Streamlined Rows) */}
       <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
+        <div>
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <Calculator className="h-4 w-4 text-teal-600 dark:text-teal-400" />
             <span>2. Desglose Rápido de Productos ({items.length})</span>
           </h3>
-
-          <button
-            type="button"
-            onClick={addItemRow}
-            className="px-3 py-1.5 bg-[#05b875] hover:bg-emerald-600 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-sm active-scale-down transition-colors cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Agregar Producto</span>
-          </button>
         </div>
 
         {/* Table breakdown */}
@@ -590,14 +541,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             const filteredItemProducts = rawQuery === ''
               ? []
               : productsList.filter(p =>
-                  removeAccents(p.nombre).includes(removeAccents(rawQuery)) ||
-                  removeAccents(p.codigo).includes(removeAccents(rawQuery))
-                ).slice(0, 10);
+                removeAccents(p.nombre).includes(removeAccents(rawQuery)) ||
+                removeAccents(p.codigo).includes(removeAccents(rawQuery))
+              ).slice(0, 10);
 
             const isExactMatchSelected = item.productoId !== '';
 
             return (
-              <div 
+              <div
                 key={item.key}
                 className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-2 relative"
               >
@@ -744,6 +695,18 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           })}
         </div>
 
+        {/* Button: + Agregar Producto (Bottom Right below Subtotal) */}
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={addItemRow}
+            className="px-4 py-2 bg-[#05b875] hover:bg-emerald-600 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-[#05b875]/20 active-scale-down transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Agregar Producto</span>
+          </button>
+        </div>
+
         {/* 4. Live Reconciliation Summary Card */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs font-bold gap-2">
@@ -756,11 +719,10 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               <span>Suma Desglose: ${totalCalculadoDesglose.toLocaleString('es-CL')}</span>
             </div>
 
-            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${
-              diferenciaCuadre === 0 && montoDocumentoNum > 0
+            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${diferenciaCuadre === 0 && montoDocumentoNum > 0
                 ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
                 : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300'
-            }`}>
+              }`}>
               {diferenciaCuadre === 0 && montoDocumentoNum > 0 ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -779,11 +741,10 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
 
       {/* Status Feedback */}
       {status && (
-        <div className={`p-4 text-xs font-bold rounded-2xl border ${
-          status.success 
-            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' 
+        <div className={`p-4 text-xs font-bold rounded-2xl border ${status.success
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
             : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-        }`}>
+          }`}>
           {status.message}
         </div>
       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createTransaction } from './actions';
 import { Plus, Minus, Package, Tag, Sparkles } from 'lucide-react';
 
@@ -30,10 +30,13 @@ interface Props {
   products: ProductOption[];
   bodegas: Bodega[];
   defaultTipo: string;
+  forceEsEntrada?: boolean;
 }
 
-export default function MovimientoForm({ products, bodegas, defaultTipo }: Props) {
-  const [esEntrada, setEsEntrada] = useState(defaultTipo === 'INGRESO');
+export default function MovimientoForm({ products, bodegas, defaultTipo, forceEsEntrada }: Props) {
+  const [esEntrada, setEsEntrada] = useState(
+    typeof forceEsEntrada === 'boolean' ? forceEsEntrada : defaultTipo === 'INGRESO'
+  );
   const [productId, setProductId] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [bodegaId, setBodegaId] = useState('');
@@ -41,6 +44,14 @@ export default function MovimientoForm({ products, bodegas, defaultTipo }: Props
   const [modoUnidad, setModoUnidad] = useState<'COMPRA' | 'CONSUMO'>('COMPRA');
   const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Sync state if prop changes (tab changes)
+  useEffect(() => {
+    if (typeof forceEsEntrada === 'boolean') {
+      setEsEntrada(forceEsEntrada);
+      setStatus(null);
+    }
+  }, [forceEsEntrada]);
 
   // Search through products
   const [searchQuery, setSearchQuery] = useState('');
@@ -107,30 +118,32 @@ export default function MovimientoForm({ products, bodegas, defaultTipo }: Props
   return (
     <form onSubmit={handleSubmit} className="space-y-3.5">
       {/* Selector de Tipo */}
-      <div className="grid grid-cols-2 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-        <button
-          type="button"
-          onClick={() => { setEsEntrada(true); setStatus(null); }}
-          className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            esEntrada 
-              ? 'bg-[#227262] text-white shadow-sm' 
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Plus className="h-3.5 w-3.5" /> Ingreso
-        </button>
-        <button
-          type="button"
-          onClick={() => { setEsEntrada(false); setStatus(null); }}
-          className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            !esEntrada 
-              ? 'bg-amber-600 text-white shadow-sm' 
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
-          }`}
-        >
-          <Minus className="h-3.5 w-3.5" /> Egreso
-        </button>
-      </div>
+      {typeof forceEsEntrada !== 'boolean' && (
+        <div className="grid grid-cols-2 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => { setEsEntrada(true); setStatus(null); }}
+            className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              esEntrada 
+                ? 'bg-[#227262] text-white shadow-sm' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Plus className="h-3.5 w-3.5" /> Ingreso
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEsEntrada(false); setStatus(null); }}
+            className={`py-2 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              !esEntrada 
+                ? 'bg-amber-600 text-white shadow-sm' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Minus className="h-3.5 w-3.5" /> Egreso
+          </button>
+        </div>
+      )}
 
       {/* Producto */}
       <div className="space-y-1 relative">
@@ -237,15 +250,14 @@ export default function MovimientoForm({ products, bodegas, defaultTipo }: Props
 
       {/* Ubicación */}
       <div className="space-y-1">
-        <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Ubicación Física *</label>
+        <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Ubicación Física (Opcional)</label>
         <select
-          required
           disabled={!bodegaId}
           value={ubicacionId}
           onChange={(e) => setUbicacionId(e.target.value)}
           className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 font-medium"
         >
-          <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Seleccione ubicación...</option>
+          <option value="" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">General / Por Defecto</option>
           {locations.map(u => (
             <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">{u.nombre}</option>
           ))}

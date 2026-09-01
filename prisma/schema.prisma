@@ -21,6 +21,8 @@ model User {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   movimientos Movimiento[]
+  sucursales  Sucursal[]   @relation("UserSucursales")
+  bodegas     Bodega[]     @relation("UserBodegas")
 }
 
 // 2. Maestro de Cuentas Contables (Existencias)
@@ -41,6 +43,8 @@ model Sucursal {
   updatedAt DateTime  @updatedAt
   bodegas   Bodega[]
   cuadros   CuadroComparativo[]
+  usuarios  User[]    @relation("UserSucursales")
+  destinos  Destino[]
 }
 
 model Bodega {
@@ -53,6 +57,7 @@ model Bodega {
   ubicaciones Ubicacion[]
   stocks      Stock[]
   movimientos Movimiento[]
+  usuarios    User[]       @relation("UserBodegas")
 }
 
 model Ubicacion {
@@ -179,6 +184,8 @@ model DocumentoMovimiento {
 
   items                   DocumentoMovimientoItem[]
   movimientos             Movimiento[]
+
+  @@unique([proveedorId, tipoDocumento, numeroDocumento])
 }
 
 model DocumentoMovimientoItem {
@@ -300,3 +307,16 @@ model UnidadMedida {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// 13. Destinos Físicos por Sucursal
+model Destino {
+  id         String   @id @default(cuid())
+  nombre     String
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([nombre, sucursalId])
+}
+

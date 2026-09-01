@@ -15,7 +15,14 @@ import {
   ArrowRightLeft,
   Calendar,
   Layers,
-  DollarSign
+  DollarSign,
+  Building2,
+  FileText,
+  Truck,
+  User,
+  Hash,
+  Tag,
+  Warehouse
 } from "lucide-react";
 import { getProductDetailsAction, updateProductAction, deleteProductAction } from "./actions";
 import Link from "next/link";
@@ -127,8 +134,8 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
   const stockTotal = productData?.stocks?.reduce((acc: number, curr: any) => acc + curr.cantidad, 0) || 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#0E172E] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 font-sans">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#0E172E] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 font-sans transition-all">
 
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-[#0B1326]">
@@ -352,52 +359,172 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
               {/* TAB 3: HISTÓRICO MOVIMIENTOS */}
               {activeTab === "MOVEMENTS" && (
                 <div className="space-y-4">
-                  <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                    Últimos Movimientos Registrados
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <div>
+                      <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        Historial Detallado de Movimientos & Compras
+                      </h3>
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        Trazabilidad completa con documento de origen, proveedor, valor neto unitario y PPP resultante.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800 w-fit">
+                      {productData.movimientos.length} transacciones registradas
+                    </span>
+                  </div>
+
                   {productData.movimientos.length === 0 ? (
                     <div className="p-8 text-center bg-slate-50 dark:bg-[#131E3A] rounded-2xl text-xs text-slate-400 border border-slate-200 dark:border-slate-800">
                       No hay transacciones registradas para este producto.
                     </div>
                   ) : (
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 dark:bg-[#0B1326] text-[9px] font-extrabold text-slate-400 uppercase border-b border-slate-200 dark:border-slate-800">
-                            <th className="p-3 pl-4">Fecha</th>
-                            <th className="p-3">Tipo Movimiento</th>
-                            <th className="p-3">Cantidad</th>
-                            <th className="p-3">Bodega / Ubicación</th>
-                            <th className="p-3 text-right pr-4">Operador</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                          {productData.movimientos.map((m: any) => (
-                            <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                              <td className="p-3 pl-4 text-slate-500 font-medium text-[11px]">
-                                {new Date(m.fecha).toLocaleString("es-CL")}
-                              </td>
-                              <td className="p-3">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${m.tipoMovimiento?.esEntrada
-                                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                                  }`}>
-                                  {m.tipoMovimiento?.nombre || "Movimiento"}
-                                </span>
-                              </td>
-                              <td className={`p-3 font-extrabold ${m.tipoMovimiento?.esEntrada ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-200'}`}>
-                                {m.tipoMovimiento?.esEntrada ? '+' : '-'}{m.cantidad}
-                              </td>
-                              <td className="p-3 text-slate-600 dark:text-slate-400 font-medium">
-                                {m.bodega?.nombre || "—"} {m.ubicacion ? `(${m.ubicacion.nombre})` : ""}
-                              </td>
-                              <td className="p-3 text-right pr-4 text-slate-500 font-medium">
-                                {m.usuario?.nombre || "Sistema"}
-                              </td>
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[840px]">
+                          <thead>
+                            <tr className="bg-slate-50 dark:bg-[#0B1326] text-[9.5px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                              <th className="py-3 px-3.5 pl-4">Fecha & Tipo</th>
+                              <th className="py-3 px-3.5">Documento & Origen</th>
+                              <th className="py-3 px-3 text-right">Cantidad</th>
+                              <th className="py-3 px-3 text-right">Valor Unit. Neto</th>
+                              <th className="py-3 px-3 text-right">Total Neto</th>
+                              <th className="py-3 px-3 text-right">PPP en Fecha</th>
+                              <th className="py-3 px-3.5">Bodega / Destino</th>
+                              <th className="py-3 px-3.5 text-right pr-4">Operador</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                            {productData.movimientos.map((m: any) => {
+                              const isEntrada = m.tipoMovimiento?.esEntrada ?? true;
+                              const prov = m.proveedor || m.documentoMovimiento?.proveedor;
+                              const valUnit = m.valorUnitario || 0;
+                              const totalNeto = valUnit * m.cantidad;
+
+                              return (
+                                <tr key={m.id} className="hover:bg-teal-50/40 dark:hover:bg-slate-800/50 transition-colors">
+                                  {/* Fecha & Tipo */}
+                                  <td className="py-3 px-3.5 pl-4">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                        {new Date(m.fecha).toLocaleDateString("es-CL", {
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                          year: "numeric"
+                                        })}
+                                      </span>
+                                      <span className={`inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-md text-[9px] font-black border tracking-wide uppercase ${
+                                        isEntrada
+                                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800"
+                                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800"
+                                      }`}>
+                                        {m.tipoMovimiento?.nombre || (isEntrada ? "Ingreso" : "Egreso")}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Documento & Proveedor */}
+                                  <td className="py-3 px-3.5">
+                                    <div className="space-y-1">
+                                      {m.documentoNumero ? (
+                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                          {m.documentoTipo === "GUIA_DESPACHO" ? (
+                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800">
+                                              GUÍA
+                                            </span>
+                                          ) : (
+                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 rounded border border-teal-200 dark:border-teal-800">
+                                              FACTURA
+                                            </span>
+                                          )}
+                                          <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 text-xs">
+                                            N° {m.documentoNumero}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-slate-400 italic text-[11px]">Sin doc. (Ajuste)</span>
+                                      )}
+
+                                      {prov ? (
+                                        <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-semibold" title={prov.razonSocial}>
+                                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                                          <span className="truncate max-w-[190px]">
+                                            {prov.razonSocial}
+                                          </span>
+                                        </div>
+                                      ) : m.centroCosto ? (
+                                        <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                                          <Tag className="h-3 w-3 text-slate-400 shrink-0" />
+                                          <span className="truncate max-w-[190px]">{m.centroCosto.nombre}</span>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </td>
+
+                                  {/* Cantidad */}
+                                  <td className="py-3 px-3 text-right whitespace-nowrap">
+                                    <span className={`font-black text-sm ${
+                                      isEntrada ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                                    }`}>
+                                      {isEntrada ? "+" : "-"}{m.cantidad}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 ml-1 font-bold">
+                                      {productData.unidad || "UND"}
+                                    </span>
+                                  </td>
+
+                                  {/* Valor Unitario Neto */}
+                                  <td className="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                    {valUnit > 0 ? (
+                                      `$${valUnit.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </td>
+
+                                  {/* Total Neto */}
+                                  <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
+                                    {totalNeto > 0 ? (
+                                      `$${Math.round(totalNeto).toLocaleString("es-CL")}`
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </td>
+
+                                  {/* PPP en Fecha */}
+                                  <td className="py-3 px-3 text-right font-mono font-black text-teal-700 dark:text-teal-300 bg-teal-50/30 dark:bg-teal-950/30 whitespace-nowrap">
+                                    {m.pppCalculado ? (
+                                      `$${m.pppCalculado.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
+                                    )}
+                                  </td>
+
+                                  {/* Bodega / Ubicación */}
+                                  <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400">
+                                    <div className="font-bold text-[11px] text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                                      {m.bodega?.nombre || "Bodega General"}
+                                    </div>
+                                    {m.ubicacion && (
+                                      <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                                        <MapPin className="h-2.5 w-2.5 text-teal-600 shrink-0" />
+                                        <span>{m.ubicacion.nombre}</span>
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Operador */}
+                                  <td className="py-3 px-3.5 text-right pr-4 whitespace-nowrap">
+                                    <div className="flex items-center justify-end gap-1.5 text-slate-700 dark:text-slate-300 text-[11px] font-semibold">
+                                      <User className="h-3 w-3 text-slate-400 shrink-0" />
+                                      <span>{m.usuario?.nombre || "Sistema"}</span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>

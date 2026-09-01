@@ -24,6 +24,12 @@ export async function createTransaction(formData: FormData) {
       return { error: "No autorizado. Inicie sesión." };
     }
 
+    const { getUserPermissions } = await import("@/lib/permissions");
+    const permissions = await getUserPermissions();
+    if (permissions?.isFiltered && bodegaId && !permissions.bodegasIds.includes(bodegaId)) {
+      return { error: "No tienes permisos para registrar movimientos en la bodega seleccionada." };
+    }
+
     await prisma.$transaction(async (tx) => {
       // 1. Fetch Product
       const product = await tx.product.findUnique({
@@ -68,6 +74,26 @@ export async function createTransaction(formData: FormData) {
         }
       }
 
+      // Resolve Ubicacion fallback if bodegaId is provided without ubicacionId
+      let finalUbicacionId = ubicacionId;
+      if (bodegaId && !finalUbicacionId) {
+        const defaultUbi = await tx.ubicacion.findFirst({
+          where: { bodegaId },
+          orderBy: { nombre: 'asc' },
+        });
+        if (defaultUbi) {
+          finalUbicacionId = defaultUbi.id;
+        } else {
+          const newDefault = await tx.ubicacion.create({
+            data: {
+              nombre: 'General / Principal',
+              bodegaId,
+            },
+          });
+          finalUbicacionId = newDefault.id;
+        }
+      }
+
       // Create movement record
       await tx.movimiento.create({
         data: {
@@ -75,7 +101,7 @@ export async function createTransaction(formData: FormData) {
           tipoMovimientoId: tipoMov.id,
           cantidad,
           bodegaId,
-          ubicacionId,
+          ubicacionId: finalUbicacionId || null,
           usuarioId: user.userId,
           pppCalculado: product.ppp,
           valorUnitario: 0.0
@@ -83,14 +109,14 @@ export async function createTransaction(formData: FormData) {
       });
 
       // Update or create stock entry
-      if (bodegaId && ubicacionId) {
+      if (bodegaId && finalUbicacionId) {
         const stockChange = esEntrada ? cantidad : -cantidad;
         await tx.stock.upsert({
           where: {
             productoId_bodegaId_ubicacionId: {
               productoId,
               bodegaId,
-              ubicacionId
+              ubicacionId: finalUbicacionId
             }
           },
           update: {
@@ -101,11 +127,15 @@ export async function createTransaction(formData: FormData) {
           create: {
             productoId,
             bodegaId,
-            ubicacionId,
+            ubicacionId: finalUbicacionId,
             cantidad: esEntrada ? cantidad : 0
           }
         });
       }
+
+      // Chronological PPP recalculation
+      const { recalcularPPPProducto } = await import('@/lib/kardex');
+      await recalcularPPPProducto(tx, productoId);
     });
 
     revalidatePath('/');

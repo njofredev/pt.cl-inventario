@@ -4,7 +4,15 @@ import ArqueoClient from "./ArqueoClient";
 export const revalidate = 0;
 
 export default async function ArqueoPage() {
+  const { getUserPermissions } = await import("@/lib/permissions");
+  const permissions = await getUserPermissions();
+
+  const filterWhere = permissions?.isFiltered
+    ? { bodegaId: { in: permissions.bodegasIds } }
+    : {};
+
   const stocksRaw = await prisma.stock.findMany({
+    where: filterWhere,
     include: {
       product: {
         select: {
@@ -34,7 +42,12 @@ export default async function ArqueoPage() {
     },
   });
 
+  const bodegasWhere = permissions?.isFiltered
+    ? { id: { in: permissions.bodegasIds } }
+    : {};
+
   const bodegas = await prisma.bodega.findMany({
+    where: bodegasWhere,
     include: {
       ubicaciones: true,
     },

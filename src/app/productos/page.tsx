@@ -32,9 +32,15 @@ export default async function ProductosPage(props: PageProps) {
   });
 
   // Fetch all products to perform accent-folded filtering
+  const { getUserPermissions } = await import("@/lib/permissions");
+  const permissions = await getUserPermissions();
+  const stocksWhere = permissions?.isFiltered 
+    ? { bodegaId: { in: permissions.bodegasIds } }
+    : undefined;
+
   const allProducts = await prisma.product.findMany({
     include: {
-      stocks: true,
+      stocks: stocksWhere ? { where: stocksWhere } : true,
       cuentaContable: true,
     },
     orderBy: { nombre: "asc" },

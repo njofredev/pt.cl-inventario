@@ -13,7 +13,7 @@ export interface DocumentItemInput {
   incluyeIva: boolean;  // si el precioUnitario ingresado incluye IVA
   subtotal: number;
   bodegaId: string;
-  ubicacionId: string;
+  ubicacionId?: string;
 }
 
 export interface CreateDocumentInput {
@@ -29,6 +29,16 @@ export interface CreateDocumentInput {
   items: DocumentItemInput[];
 }
 
+/**
+ * Utility to parse HTML date string (YYYY-MM-DD) into local Date
+ * preventing 1-day backward timezone shift (UTC-4 / UTC-3).
+ */
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(`${dateStr}T12:00:00`);
+}
+
 export async function createDocumentoMovimiento(input: CreateDocumentInput) {
   try {
     const cookieStore = await cookies();
@@ -39,16 +49,38 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
       return { success: false, error: 'Usuario no autenticado.' };
     }
 
-    if (!input.numeroDocumento.trim()) {
+    // Verify user ID exists in DB to prevent foreign key failure
+    const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
+    const validUserId = dbUser ? dbUser.id : (await prisma.user.findFirst())?.id;
+
+    if (!validUserId) {
+      return { success: false, error: 'No existe un usuario activo para registrar el movimiento.' };
+    }
+
+    if (!input.numeroDocumento || !input.numeroDocumento.trim()) {
       return { success: false, error: 'El número de documento es obligatorio.' };
     }
 
-    if (!input.rutProveedor.trim()) {
+    if (!input.rutProveedor || !input.rutProveedor.trim()) {
       return { success: false, error: 'El RUT del proveedor es obligatorio.' };
+    }
+
+    if (!input.fechaDocumento || isNaN(Date.parse(input.fechaDocumento))) {
+      return { success: false, error: 'Por favor ingresa una fecha de emisión válida.' };
     }
 
     if (!input.items || input.items.length === 0) {
       return { success: false, error: 'Debes agregar al menos un producto al desglose.' };
+    }
+
+    const { getUserPermissions } = await import("@/lib/permissions");
+    const permissions = await getUserPermissions();
+    if (permissions?.isFiltered) {
+      for (const item of input.items) {
+        if (item.bodegaId && !permissions.bodegasIds.includes(item.bodegaId)) {
+          return { success: false, error: 'No tienes permisos para registrar movimientos en una o más de las bodegas seleccionadas.' };
+        }
+      }
     }
 
     // 1. Proveedor lookup or auto-creation
@@ -66,7 +98,24 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
       });
     }
 
-    // 2. Determine initial Concatenation & Reconciliation State
+    // 2. Check for duplicate document (proveedor + tipoDocumento + numeroDocumento)
+    const existingDoc = await prisma.documentoMovimiento.findFirst({
+      where: {
+        proveedorId: proveedor.id,
+        tipoDocumento: input.tipoDocumento,
+        numeroDocumento: input.numeroDocumento.trim(),
+      },
+    });
+
+    if (existingDoc) {
+      const tipoLabel = input.tipoDocumento === 'FACTURA' ? 'Factura' : 'Guía de Despacho';
+      return { 
+        success: false, 
+        error: `Ya existe una ${tipoLabel} N° "${input.numeroDocumento.trim()}" registrada para el proveedor ${proveedor.razonSocial} (${cleanRut}). No se permiten documentos duplicados.` 
+      };
+    }
+
+    // 3. Determine initial Concatenation & Reconciliation State
     let estadoConciliacion = 'CUADRADO';
     if (input.tipoDocumento === 'GUIA_DESPACHO') {
       estadoConciliacion = 'PENDIENTE_FACTURA';
@@ -74,7 +123,7 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
       estadoConciliacion = 'REQUIERE_NOTA_CREDITO';
     }
 
-    // 3. Find default TipoMovimiento for Compra
+    // 4. Find default TipoMovimiento for Compra
     const tipoMov = await prisma.tipoMovimiento.findFirst({
       where: { esEntrada: true },
     });
@@ -83,7 +132,9 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
       return { success: false, error: 'No se encontró un tipo de movimiento de entrada configurado.' };
     }
 
-    // 4. DB Transaction: Create Header, Items, Movimientos, and Update Physical Stock
+    const docDate = parseLocalDate(input.fechaDocumento);
+
+    // 5. DB Transaction: Create Header, Items, Movimientos, and Update Physical Stock & Costs
     await prisma.$transaction(async (tx) => {
       // Create Header
       const docHeader = await tx.documentoMovimiento.create({
@@ -91,7 +142,7 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
           categoria: input.categoria,
           tipoDocumento: input.tipoDocumento,
           numeroDocumento: input.numeroDocumento.trim(),
-          fechaDocumento: new Date(input.fechaDocumento),
+          fechaDocumento: docDate,
           proveedorId: proveedor.id,
           montoTotal: input.montoTotal,
           estadoConciliacion,
@@ -108,6 +159,29 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
           valorUnitarioNeto = item.precioUnitario / 1.19;
         }
 
+        // Round to 2 decimals for net unit price
+        valorUnitarioNeto = Math.round(valorUnitarioNeto * 100) / 100;
+
+        // Resolve or fallback Ubicacion if not explicitly set
+        let finalUbicacionId = item.ubicacionId;
+        if (!finalUbicacionId && item.bodegaId) {
+          const defaultUbi = await tx.ubicacion.findFirst({
+            where: { bodegaId: item.bodegaId },
+            orderBy: { nombre: 'asc' },
+          });
+          if (defaultUbi) {
+            finalUbicacionId = defaultUbi.id;
+          } else {
+            const newDefault = await tx.ubicacion.create({
+              data: {
+                nombre: 'General / Principal',
+                bodegaId: item.bodegaId,
+              },
+            });
+            finalUbicacionId = newDefault.id;
+          }
+        }
+
         // Create Item line in Document
         await tx.documentoMovimientoItem.create({
           data: {
@@ -118,23 +192,24 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
             esAfecto: item.esAfecto,
             incluyeIva: item.incluyeIva,
             subtotal: item.subtotal,
-            bodegaId: item.bodegaId,
-            ubicacionId: item.ubicacionId,
+            bodegaId: item.bodegaId || null,
+            ubicacionId: finalUbicacionId || null,
           },
         });
 
         // Create individual Movement audit log
         await tx.movimiento.create({
           data: {
-            fecha: new Date(input.fechaDocumento),
+            fecha: docDate,
             productoId: item.productoId,
             tipoMovimientoId: tipoMov.id,
             cantidad: item.cantidad,
             valorUnitario: valorUnitarioNeto,
-            bodegaId: item.bodegaId,
-            ubicacionId: item.ubicacionId,
+            pppCalculado: valorUnitarioNeto,
+            bodegaId: item.bodegaId || null,
+            ubicacionId: finalUbicacionId || null,
             proveedorId: proveedor.id,
-            usuarioId: user.userId,
+            usuarioId: validUserId,
             documentoTipo: input.tipoDocumento,
             documentoNumero: input.numeroDocumento.trim(),
             documentoMovimientoId: docHeader.id,
@@ -142,28 +217,40 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
         });
 
         // Increment physical stock in specific location
-        await tx.stock.upsert({
-          where: {
-            productoId_bodegaId_ubicacionId: {
+        if (item.bodegaId && finalUbicacionId) {
+          await tx.stock.upsert({
+            where: {
+              productoId_bodegaId_ubicacionId: {
+                productoId: item.productoId,
+                bodegaId: item.bodegaId,
+                ubicacionId: finalUbicacionId,
+              },
+            },
+            update: {
+              cantidad: { increment: item.cantidad },
+            },
+            create: {
               productoId: item.productoId,
               bodegaId: item.bodegaId,
-              ubicacionId: item.ubicacionId,
+              ubicacionId: finalUbicacionId,
+              cantidad: item.cantidad,
             },
-          },
-          update: {
-            cantidad: { increment: item.cantidad },
-          },
-          create: {
-            productoId: item.productoId,
-            bodegaId: item.bodegaId,
-            ubicacionId: item.ubicacionId,
-            cantidad: item.cantidad,
-          },
-        });
+          });
+        }
+      }
+
+      // Chronological PPP Recalculation:
+      // Recalculate historical and current PPP based on full chronological movement history
+      const { recalcularPPPProducto } = await import('@/lib/kardex');
+      const uniqueProductIds = Array.from(new Set(input.items.map(it => it.productoId)));
+      for (const prodId of uniqueProductIds) {
+        await recalcularPPPProducto(tx, prodId);
       }
     });
 
     revalidatePath('/movimientos');
+    revalidatePath('/productos');
+    revalidatePath('/novedades/kardex');
     return { success: true };
   } catch (error: any) {
     console.error('Error creating documento movimiento:', error);
@@ -173,8 +260,12 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
 
 export async function engancharFacturaAGuia(docId: string, numeroFactura: string, fechaFactura: string) {
   try {
-    if (!numeroFactura.trim()) {
+    if (!numeroFactura || !numeroFactura.trim()) {
       return { success: false, error: 'El número de factura es obligatorio.' };
+    }
+
+    if (!fechaFactura || isNaN(Date.parse(fechaFactura))) {
+      return { success: false, error: 'Por favor ingresa una fecha de factura válida.' };
     }
 
     const doc = await prisma.documentoMovimiento.findUnique({
@@ -189,7 +280,7 @@ export async function engancharFacturaAGuia(docId: string, numeroFactura: string
       where: { id: docId },
       data: {
         facturaEnganchadaNumero: numeroFactura.trim(),
-        facturaEnganchadaFecha: new Date(fechaFactura),
+        facturaEnganchadaFecha: parseLocalDate(fechaFactura),
         estadoConciliacion: 'CUADRADO',
       },
     });

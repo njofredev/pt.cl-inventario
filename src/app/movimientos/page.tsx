@@ -30,8 +30,16 @@ export default async function MovimientosPage(props: PageProps) {
     },
   });
 
-  // 2. Fetch bodegas and their ubicaciones
+  // 2. Fetch bodegas and their ubicaciones (filtered by permissions)
+  const { getUserPermissions } = await import("@/lib/permissions");
+  const permissions = await getUserPermissions();
+
+  const bodegasWhere = permissions?.isFiltered
+    ? { id: { in: permissions.bodegasIds } }
+    : {};
+
   const bodegas = await prisma.bodega.findMany({
+    where: bodegasWhere,
     include: {
       ubicaciones: true,
     },
@@ -52,8 +60,13 @@ export default async function MovimientosPage(props: PageProps) {
     },
   });
 
-  // 4. Fetch recent movements from DB
+  // 4. Fetch recent movements from DB (filtered by permissions)
+  const movementsWhere = permissions?.isFiltered
+    ? { bodegaId: { in: permissions.bodegasIds } }
+    : {};
+
   const movements = await prisma.movimiento.findMany({
+    where: movementsWhere,
     take: 20,
     orderBy: {
       fecha: "desc",

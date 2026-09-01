@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Building2, ReceiptText, Clock, MapPin, Layers, History } from 'lucide-react';
+import { Building2, ReceiptText, Clock, MapPin, Layers, History, Plus, Minus } from 'lucide-react';
 import MovimientoComprasForm from './MovimientoComprasForm';
 import MovimientoForm from './MovimientoForm';
 import RecepcionesPendientesList from './RecepcionesPendientesList';
@@ -23,7 +23,7 @@ export default function MovimientosClientContainer({
   documentosPendientes,
   defaultTipo,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'COMPRAS' | 'DIRECTO' | 'PENDIENTES'>('COMPRAS');
+  const [activeTab, setActiveTab] = useState<'COMPRAS' | 'INGRESO_DIRECTO' | 'EGRESO_DIRECTO' | 'PENDIENTES'>('COMPRAS');
 
   const guiasPendientesCount = documentosPendientes.filter(d => d.tipoDocumento === 'GUIA_DESPACHO' && d.estadoConciliacion === 'PENDIENTE_FACTURA').length;
   const facturasNotaCreditoCount = documentosPendientes.filter(d => d.tipoDocumento === 'FACTURA' && d.estadoConciliacion === 'REQUIERE_NOTA_CREDITO').length;
@@ -49,15 +49,28 @@ export default function MovimientosClientContainer({
 
           <button
             type="button"
-            onClick={() => setActiveTab('DIRECTO')}
+            onClick={() => setActiveTab('INGRESO_DIRECTO')}
             className={`px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'DIRECTO'
-                ? 'bg-[#162158] dark:bg-teal-600 text-white shadow-md'
+              activeTab === 'INGRESO_DIRECTO'
+                ? 'bg-[#227262] text-white shadow-md'
                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
-            <ReceiptText className="h-4 w-4" />
-            <span>Movimiento Directo / Consumo</span>
+            <Plus className="h-4 w-4" />
+            <span>Ingreso Directo</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('EGRESO_DIRECTO')}
+            className={`px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'EGRESO_DIRECTO'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Minus className="h-4 w-4" />
+            <span>Egreso Directo (Consumo)</span>
           </button>
 
           <button
@@ -103,21 +116,42 @@ export default function MovimientosClientContainer({
             </div>
           )}
 
-          {activeTab === 'DIRECTO' && (
+          {activeTab === 'INGRESO_DIRECTO' && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                  Movimiento Directo Rápido (Ingreso / Egreso)
+                  Ingreso Directo Rápido (Ajuste de Inventario)
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Para egresos directos de stock por consumo o ajustes de inventario sin documento tributario.
+                  Registra entradas directas de stock por ajuste de inventario sin documento tributario.
                 </p>
               </div>
 
               <MovimientoForm
                 products={products}
                 bodegas={bodegas}
-                defaultTipo={defaultTipo}
+                defaultTipo="INGRESO"
+                forceEsEntrada={true}
+              />
+            </div>
+          )}
+
+          {activeTab === 'EGRESO_DIRECTO' && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                  Egreso Directo de Stock (Consumo / Ajuste)
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Registra salidas directas de stock por consumo interno, rotura o ajustes negativos.
+                </p>
+              </div>
+
+              <MovimientoForm
+                products={products}
+                bodegas={bodegas}
+                defaultTipo="EGRESO"
+                forceEsEntrada={false}
               />
             </div>
           )}

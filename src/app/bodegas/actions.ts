@@ -2,10 +2,18 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getUserPermissions } from "@/lib/permissions";
 
 export async function getBodegasAction() {
   try {
+    const permissions = await getUserPermissions();
+    const whereClause: any = {};
+    if (permissions?.isFiltered) {
+      whereClause.id = { in: permissions.bodegasIds };
+    }
+
     const bodegas = await prisma.bodega.findMany({
+      where: whereClause,
       include: {
         sucursal: true,
         ubicaciones: {
@@ -41,7 +49,14 @@ export async function getBodegasAction() {
 
 export async function getSucursalesAction() {
   try {
+    const permissions = await getUserPermissions();
+    const whereClause: any = {};
+    if (permissions?.isFiltered) {
+      whereClause.id = { in: permissions.sucursalesIds };
+    }
+
     const sucursales = await prisma.sucursal.findMany({
+      where: whereClause,
       orderBy: { nombre: 'asc' },
     });
     return { sucursales: JSON.parse(JSON.stringify(sucursales)) };
