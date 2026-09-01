@@ -10,8 +10,12 @@ export default async function UsuariosPage() {
     },
     include: {
       sucursales: true,
-      bodegas: true,
-    }
+      bodegas: {
+        include: {
+          sucursal: true,
+        },
+      },
+    },
   });
 
   const sucursales = await prisma.sucursal.findMany({
