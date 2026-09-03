@@ -54,12 +54,13 @@ export default function MovimientosClientContainer({
 
   return (
     <div className="space-y-6">
-      {/* Visual Operational Bar (Entradas vs Salidas vs Gestión) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Pilar 1: ENTRADAS DE STOCK */}
-        <div 
-          onClick={() => setActiveTab(activeTab === 'INGRESO_DIRECTO' ? 'INGRESO_DIRECTO' : 'COMPRAS')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+      {/* Visual Operational Bar (Entradas vs Salidas vs Gestión) - Visible en Compras/Ingresos/Egresos/Pendientes */}
+      {activeTab !== 'HISTORIAL' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Pilar 1: ENTRADAS DE STOCK */}
+          <div 
+            onClick={() => setActiveTab(activeTab === 'INGRESO_DIRECTO' ? 'INGRESO_DIRECTO' : 'COMPRAS')}
+            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
             activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO'
               ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 shadow-md shadow-emerald-500/10'
               : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
@@ -181,11 +182,12 @@ export default function MovimientosClientContainer({
           )}
         </div>
       </div>
+      )}
 
       {/* Main View Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left / Main Section */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className={`${activeTab === 'HISTORIAL' ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-6`}>
           {activeTab === 'COMPRAS' && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -315,61 +317,63 @@ export default function MovimientosClientContainer({
           )}
         </div>
 
-        {/* Right Section: Bitácora & Histórico Reciente */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-fit space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-teal-600" />
-              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                Histórico Reciente
-              </h2>
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase">
-              Últimos 15
-            </span>
-          </div>
-
-          <div className="overflow-hidden">
-            {movements.length === 0 ? (
-              <p className="text-xs text-slate-400 dark:text-slate-500 py-6 text-center">
-                No se han registrado movimientos de inventario todavía.
-              </p>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[620px] overflow-y-auto pr-1 hide-scrollbar space-y-1">
-                {movements.map((t) => (
-                  <div 
-                    key={t.id}
-                    className="py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl px-2 transition-colors space-y-1"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
-                        {t.product.nombre}
-                      </p>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${
-                        t.tipoMovimiento.esEntrada 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
-                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-                      }`}>
-                        {t.tipoMovimiento.esEntrada ? '+' : '-'} {t.cantidad}
-                      </span>
-                    </div>
-
-                    <p className="text-[10px] text-slate-400">
-                      Código: <span className="font-mono text-slate-600 dark:text-slate-300">{t.product.codigo}</span>
-                      {t.documentoTipo && ` | ${t.documentoTipo} N° ${t.documentoNumero || ''}`}
-                    </p>
-
-                    {t.bodega && t.ubicacion && (
-                      <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
-                        <MapPin className="h-3 w-3 shrink-0" /> {t.bodega.nombre} ({t.ubicacion.nombre})
-                      </p>
-                    )}
-                  </div>
-                ))}
+        {/* Right Section: Bitácora & Histórico Reciente (Visible en operaciones de registro) */}
+        {activeTab !== 'HISTORIAL' && (
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-fit space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-teal-600" />
+                <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                  Histórico Reciente
+                </h2>
               </div>
-            )}
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">
+                Últimos 15
+              </span>
+            </div>
+
+            <div className="overflow-hidden">
+              {movements.length === 0 ? (
+                <p className="text-xs text-slate-400 dark:text-slate-500 py-6 text-center">
+                  No se han registrado movimientos de inventario todavía.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[620px] overflow-y-auto pr-1 hide-scrollbar space-y-1">
+                  {movements.map((t) => (
+                    <div 
+                      key={t.id}
+                      className="py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl px-2 transition-colors space-y-1"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                          {t.product.nombre}
+                        </p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${
+                          t.tipoMovimiento.esEntrada 
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
+                            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                        }`}>
+                          {t.tipoMovimiento.esEntrada ? '+' : '-'} {t.cantidad}
+                        </span>
+                      </div>
+
+                      <p className="text-[10px] text-slate-400">
+                        Código: <span className="font-mono text-slate-600 dark:text-slate-300">{t.product.codigo}</span>
+                        {t.documentoTipo && ` | ${t.documentoTipo} N° ${t.documentoNumero || ''}`}
+                      </p>
+
+                      {t.bodega && t.ubicacion && (
+                        <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" /> {t.bodega.nombre} ({t.ubicacion.nombre})
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
