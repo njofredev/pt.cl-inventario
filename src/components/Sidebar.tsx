@@ -1,13 +1,15 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { 
   LayoutDashboard, 
   Package, 
   Users, 
   ArrowLeftRight, 
+  ArrowDownLeft,
+  ArrowUpRight,
   ShieldAlert, 
   ClipboardList, 
   LogOut,
@@ -25,10 +27,12 @@ import {
   Sparkles,
   ChevronRight,
   ChevronDown,
-  MapPin
+  MapPin,
+  Search
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
+import GlobalSearchModal from "@/components/GlobalSearchModal";
 
 interface SidebarProps {
   user: JWTPayload;
@@ -37,6 +41,7 @@ interface SidebarProps {
 
 export default function Sidebar({ user, logoutAction }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -44,7 +49,22 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
   const [greetPeriod, setGreetPeriod] = useState<'MORNING' | 'AFTERNOON' | 'NIGHT'>('AFTERNOON');
   const [greetText, setGreetText] = useState<string>('Buenas tardes');
 
-  // Flyout Popover State
+  // Search Modal State
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global Keyboard Shortcut: Alt + J
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check Alt + J (or Alt + j)
+      if (e.altKey && (e.key === 'j' || e.key === 'J')) {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [novedadesHovered, setNovedadesHovered] = useState(false);
   const [novedadesTop, setNovedadesTop] = useState(220);
   const [hoveredNovedad, setHoveredNovedad] = useState<any | null>(null);
@@ -124,7 +144,9 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       items: [
         { href: "/", label: "Panel de Control", icon: LayoutDashboard, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/productos", label: "Productos / Stock", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/movimientos", label: "Movimientos", icon: ArrowLeftRight, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+        { href: "/movimientos?tab=COMPRAS", label: "Recepción / Compras", icon: ArrowDownLeft, badge: "Entrada", badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+        { href: "/movimientos?tab=EGRESO_DIRECTO", label: "Salidas / Consumos", icon: ArrowUpRight, badge: "Salida", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+        { href: "/movimientos?tab=HISTORIAL", label: "Histórico & Bitácora", icon: ArrowLeftRight, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
         { href: "/solicitudes", label: "Solicitudes", icon: ClipboardList, roles: ["ADMIN", "OPERADOR"] },
       ]
     },
@@ -222,7 +244,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar px-3 pt-4 pb-2">
         
         {/* Header / Brand */}
-        <div className="flex items-center gap-3 px-2 pb-4 mb-2">
+        <div className="flex items-center gap-3 px-2 pb-3 mb-1">
           <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-2 shrink-0 shadow-xs">
             <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
@@ -234,6 +256,26 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
               CONTROL INVENTARIO
             </p>
           </div>
+        </div>
+
+        {/* Quick Search Trigger (Alt + J) */}
+        <div className="px-1 mb-3">
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100/90 hover:bg-slate-200/70 dark:bg-[#0d1830] dark:hover:bg-[#132247] border border-slate-200/80 dark:border-[#172545] rounded-2xl transition-all shadow-xs group cursor-pointer"
+            title="Buscar en todo el inventario (Alt + J)"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Search className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="truncate text-[11px]">Buscar...</span>
+            </div>
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-black text-slate-500 dark:text-slate-400 shadow-2xs">
+              <span className="text-[9px]">Alt</span>
+              <span>+</span>
+              <span>J</span>
+            </div>
+          </button>
         </div>
 
         {/* Navigation Groups */}
@@ -250,21 +292,22 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                 </p>
 
                 <nav className="space-y-1">
-                  {filteredItems.map((item) => {
-                    const isActive = pathname === item.href;
+                  {filteredItems.map((item: any) => {
+                    const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+                    const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
                     const Icon = item.icon;
 
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
+                        className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
                           isActive 
                             ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25" 
                             : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${
                             isActive 
                               ? "text-white" 
@@ -272,6 +315,12 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                           }`} />
                           <span className="truncate">{item.label}</span>
                         </div>
+
+                        {item.badge && !isActive && (
+                          <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor}`}>
+                            {item.badge}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
@@ -280,48 +329,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
             );
           })}
 
-          {/* NOVEDADES 2026 - Trigger Item */}
-          {novedadesItems.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1 flex items-center justify-between">
-                <span>NOVEDADES 2026</span>
-                <Sparkles className="h-3 w-3 text-amber-500 animate-pulse" />
-              </p>
-
-              <div 
-                ref={triggerRef}
-                onMouseEnter={handleMouseEnterTrigger}
-                onMouseLeave={handleMouseLeaveTrigger}
-                className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer select-none ${
-                  isNovedadesActive
-                    ? "bg-[#05b875] text-white font-extrabold shadow-lg shadow-[#05b875]/25"
-                    : novedadesHovered
-                    ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132247]/80"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Sparkles className={`h-4.5 w-4.5 shrink-0 ${
-                    isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse"
-                  }`} />
-                  <span className="truncate font-extrabold">Novedades 2026</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
-                    isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
-                  }`}>
-                    4 APPS
-                  </span>
-                  <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    novedadesHovered ? "translate-x-1 text-teal-500" : ""
-                  }`} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Administration Menu */}
+          {/* Administration Menu (Mantenedores) */}
           {navGroups.slice(1).map((group, gIdx) => {
             const filteredItems = group.items.filter(item => item.roles.includes(user.role));
             if (filteredItems.length === 0) return null;
@@ -362,6 +370,47 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
               </div>
             );
           })}
+
+          {/* NOVEDADES 2026 - Trigger Item (Debajo de Mantenedores) */}
+          {novedadesItems.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1 flex items-center justify-between">
+                <span>NOVEDADES 2026</span>
+                <Sparkles className="h-3 w-3 text-amber-500 animate-pulse" />
+              </p>
+
+              <div 
+                ref={triggerRef}
+                onMouseEnter={handleMouseEnterTrigger}
+                onMouseLeave={handleMouseLeaveTrigger}
+                className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer select-none ${
+                  isNovedadesActive
+                    ? "bg-[#05b875] text-white font-extrabold shadow-lg shadow-[#05b875]/25"
+                    : novedadesHovered
+                    ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132247]/80"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Sparkles className={`h-4.5 w-4.5 shrink-0 ${
+                    isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse"
+                  }`} />
+                  <span className="truncate font-extrabold">Novedades 2026</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                    isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
+                  }`}>
+                    4 APPS
+                  </span>
+                  <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                    novedadesHovered ? "translate-x-1 text-teal-500" : ""
+                  }`} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
@@ -462,32 +511,11 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
         </div>
       )}
 
-      {/* NOVEDADES EXPLANATORY TOOLTIP */}
-      {novedadesHovered && hoveredNovedad && (
-        <div 
-          style={{ top: `${novedadesTop + 24}px` }}
-          className="fixed left-[546px] z-[999999] animate-in fade-in slide-in-from-left-2 duration-200 w-[280px]"
-        >
-          <div className="bg-slate-950/98 dark:bg-[#081229]/98 text-slate-200 border border-slate-700/80 rounded-2xl p-4 shadow-2xl text-xs leading-relaxed font-semibold backdrop-blur-md space-y-2.5 border-l-4 border-l-teal-500">
-            <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black text-teal-400 dark:text-[#00e699] uppercase tracking-wider">
-                FUTURO MÓDULO
-              </span>
-              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider ${hoveredNovedad.statusColor}`}>
-                {hoveredNovedad.statusBadge}
-              </span>
-            </div>
-            <div>
-              <h4 className="font-black text-xs text-white leading-tight">
-                {hoveredNovedad.label}
-              </h4>
-            </div>
-            <p className="text-slate-400 text-[11px] leading-relaxed font-medium">
-              {hoveredNovedad.description}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* GLOBAL SEARCH MODAL (Alt + J) */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
 
     </aside>
   );

@@ -5,6 +5,7 @@ import { LayoutDashboard, Package, Users, ArrowLeftRight, ShieldAlert, Clipboard
 import { cookies } from "next/headers";
 import { verifyJWT } from "@/lib/auth";
 import { logoutAction } from "./login/actions";
+import { Suspense } from "react";
 import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
@@ -36,8 +37,10 @@ export default async function RootLayout({
     <html lang="es" className="h-full">
       <body className="h-full bg-[var(--background)] text-foreground transition-colors duration-300">
         <div className="flex min-h-full">
-          {/* Sidebar */}
-          <Sidebar user={user} logoutAction={logoutAction} />
+          {/* Sidebar wrapped in Suspense for useSearchParams */}
+          <Suspense fallback={null}>
+            <Sidebar user={user} logoutAction={logoutAction} />
+          </Suspense>
 
           {/* Main content wrapper */}
           <div className="flex flex-col flex-1 md:pl-[295px]">

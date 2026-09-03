@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import MovimientosClientContainer from "./MovimientosClientContainer";
 
 interface PageProps {
   searchParams: Promise<{
     tipo?: string;
+    tab?: string;
   }>;
 }
 
@@ -11,7 +13,7 @@ export const revalidate = 0;
 
 export default async function MovimientosPage(props: PageProps) {
   const searchParams = await props.searchParams;
-  const defaultTipo = searchParams.tipo || "INGRESO";
+  const defaultTab = searchParams.tab || (searchParams.tipo === "EGRESO" ? "EGRESO_DIRECTO" : "COMPRAS");
 
   // 1. Fetch products for autocomplete search
   const products = await prisma.product.findMany({
@@ -122,21 +124,23 @@ export default async function MovimientosPage(props: PageProps) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
-          Movimientos & Gestión Documental de Compras
+          Operaciones de Inventario: Entradas & Salidas
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Registra facturas y guías de despacho por compras con control de IVA y enganche de documentos, o efectúa egresos directos de stock.
+          Gestiona ingresos por compras comerciales (Facturas y Guías), salidas para consumo clínico o consultas de bitácora.
         </p>
       </div>
 
-      <MovimientosClientContainer
-        products={JSON.parse(JSON.stringify(products))}
-        bodegas={JSON.parse(JSON.stringify(bodegas))}
-        proveedores={JSON.parse(JSON.stringify(proveedores))}
-        movements={JSON.parse(JSON.stringify(movements))}
-        documentosPendientes={JSON.parse(JSON.stringify(documentosPendientes))}
-        defaultTipo={defaultTipo}
-      />
+      <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Cargando operaciones...</div>}>
+        <MovimientosClientContainer
+          products={JSON.parse(JSON.stringify(products))}
+          bodegas={JSON.parse(JSON.stringify(bodegas))}
+          proveedores={JSON.parse(JSON.stringify(proveedores))}
+          movements={JSON.parse(JSON.stringify(movements))}
+          documentosPendientes={JSON.parse(JSON.stringify(documentosPendientes))}
+          defaultTab={defaultTab}
+        />
+      </Suspense>
     </div>
   );
 }

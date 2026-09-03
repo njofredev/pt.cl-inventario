@@ -262,34 +262,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* 1. Categoría Selector */}
-      <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <button
-          type="button"
-          onClick={() => setCategoria('COMPRA')}
-          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${categoria === 'COMPRA'
-              ? 'bg-[#05b875] text-white shadow-md shadow-[#05b875]/20'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-            }`}
-        >
-          <Building2 className="h-4 w-4" />
-          <span>Ingreso por Compras</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCategoria('OTRO')}
-          className={`py-2.5 px-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${categoria === 'OTRO'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/60'
-            }`}
-        >
-          <ReceiptText className="h-4 w-4" />
-          <span>Otro Tipo (Ajuste)</span>
-        </button>
-      </div>
-
-      {/* 2. Document Header Info & General Settings */}
+      {/* 1. Document Header Info & General Settings */}
       <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
           <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />
