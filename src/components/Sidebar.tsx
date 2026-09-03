@@ -28,7 +28,8 @@ import {
   ChevronRight,
   ChevronDown,
   MapPin,
-  Search
+  Search,
+  Sliders
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -138,26 +139,60 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
     }
   };
 
+  const directTopItem = {
+    href: "/",
+    label: "Panel de Control",
+    icon: LayoutDashboard,
+    roles: ["ADMIN", "OPERADOR", "CONTABLE"],
+  };
+
   const navGroups = [
     {
-      title: "MENÚ PRINCIPAL",
-      items: [
-        { href: "/", label: "Panel de Control", icon: LayoutDashboard, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/productos", label: "Productos / Stock", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/movimientos?tab=COMPRAS", label: "Recepción / Compras", icon: ArrowDownLeft, badge: "Entrada", badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/movimientos?tab=EGRESO_DIRECTO", label: "Salidas / Consumos", icon: ArrowUpRight, badge: "Salida", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/movimientos?tab=HISTORIAL", label: "Histórico & Bitácora", icon: ArrowLeftRight, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/solicitudes", label: "Solicitudes", icon: ClipboardList, roles: ["ADMIN", "OPERADOR"] },
+      title: "GESTIÓN DE STOCK",
+      subsections: [
+        {
+          items: [
+            { href: "/productos", label: "Catálogo / Stock Actual", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+            { href: "/solicitudes", label: "Solicitudes de Insumos", icon: ClipboardList, roles: ["ADMIN", "OPERADOR"] },
+          ]
+        },
+        {
+          label: "Movimientos",
+          items: [
+            { href: "/movimientos?tab=COMPRAS", label: "Entradas (Recepción)", icon: ArrowDownLeft, badge: "Entrada", badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+            { href: "/movimientos?tab=EGRESO_DIRECTO", label: "Salidas (Consumos)", icon: ArrowUpRight, badge: "Salida", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+            { href: "/movimientos?tab=HISTORIAL", label: "Histórico y Bitácora", icon: ArrowLeftRight, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+          ]
+        }
       ]
     },
     {
-      title: "MANTENEDORES",
-      items: [
-        { href: "/bodegas", label: "Bodegas y Ubicaciones", icon: Warehouse, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/unidades", label: "Unidades Medida", icon: Tag, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/destinos", label: "Destinos", icon: MapPin, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
-        { href: "/proveedores", label: "Proveedores", icon: Users, roles: ["ADMIN", "CONTABLE"] },
-        { href: "/usuarios", label: "Gestión Usuarios", icon: ShieldAlert, roles: ["ADMIN"] },
+      title: "CONFIGURACIÓN Y CATÁLOGOS",
+      subsections: [
+        {
+          label: "Infraestructura",
+          items: [
+            { href: "/bodegas", label: "Bodegas y Ubicaciones", icon: Warehouse, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+            { href: "/destinos", label: "Destinos / Box / Servicios", icon: MapPin, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+          ]
+        },
+        {
+          label: "Parámetros",
+          items: [
+            { href: "/proveedores", label: "Proveedores", icon: Users, roles: ["ADMIN", "CONTABLE"] },
+            { href: "/unidades", label: "Unidades de Medida", icon: Tag, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
+          ]
+        }
+      ]
+    },
+    {
+      title: "SISTEMA",
+      subsections: [
+        {
+          items: [
+            { href: "/usuarios", label: "Gestión de Usuarios y Roles", icon: ShieldAlert, roles: ["ADMIN"] },
+          ]
+        }
       ]
     }
   ];
@@ -280,137 +315,133 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
 
         {/* Navigation Groups */}
         <div className="space-y-4">
-          {/* Main Menu */}
-          {navGroups.slice(0, 1).map((group, gIdx) => {
-            const filteredItems = group.items.filter(item => item.roles.includes(user.role));
-            if (filteredItems.length === 0) return null;
+          {/* Direct Top Link: Panel de Control */}
+          {directTopItem.roles.includes(user.role) && (
+            <div className="space-y-1">
+              <Link
+                href={directTopItem.href}
+                className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-full transition-all duration-200 group active-scale-down ${
+                  pathname === directTopItem.href
+                    ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25"
+                    : "text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-200 dark:hover:text-white dark:hover:bg-[#132247]/60"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <LayoutDashboard className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                    pathname === directTopItem.href
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                  }`} />
+                  <span className="truncate">{directTopItem.label}</span>
+                </div>
+              </Link>
+            </div>
+          )}
+
+          {/* Group Blocks */}
+          {navGroups.map((group, gIdx) => {
+            // Check if any item is visible for this user
+            const hasVisibleItems = group.subsections.some(sub => 
+              sub.items.some(item => item.roles.includes(user.role))
+            );
+            if (!hasVisibleItems && group.title !== "SISTEMA") return null;
 
             return (
-              <div key={gIdx} className="space-y-1">
-                <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1">
+              <div key={gIdx} className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                <p className="text-[9.5px] font-black tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 pt-1">
                   {group.title}
                 </p>
 
-                <nav className="space-y-1">
-                  {filteredItems.map((item: any) => {
-                    const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
-                    const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
-                    const Icon = item.icon;
+                <div className="space-y-2.5">
+                  {group.subsections.map((sub, sIdx) => {
+                    const filteredSubItems = sub.items.filter(item => item.roles.includes(user.role));
+                    if (filteredSubItems.length === 0) return null;
 
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
-                          isActive 
-                            ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25" 
-                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
+                      <div key={sIdx} className="space-y-1">
+                        {sub.label && (
+                          <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3.5 pt-0.5">
+                            {sub.label}
+                          </p>
+                        )}
+
+                        <nav className="space-y-0.5">
+                          {filteredSubItems.map((item: any) => {
+                            const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+                            const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
+                            const Icon = item.icon;
+
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center justify-between px-3.5 py-2 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
+                                  isActive 
+                                    ? "bg-[#05b875] text-white font-bold shadow-md shadow-[#05b875]/25" 
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Icon className={`h-4 w-4 shrink-0 transition-colors ${
+                                    isActive 
+                                      ? "text-white" 
+                                      : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                                  }`} />
+                                  <span className="truncate">{item.label}</span>
+                                </div>
+
+                                {item.badge && !isActive && (
+                                  <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor}`}>
+                                    {item.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </nav>
+                      </div>
+                    );
+                  })}
+
+                  {/* If SISTEMA, render NOVEDADES 2026 inside it */}
+                  {group.title === "SISTEMA" && novedadesItems.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <div 
+                        ref={triggerRef}
+                        onMouseEnter={handleMouseEnterTrigger}
+                        onMouseLeave={handleMouseLeaveTrigger}
+                        className={`flex items-center justify-between px-3.5 py-2 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer select-none ${
+                          isNovedadesActive
+                            ? "bg-[#05b875] text-white font-extrabold shadow-md shadow-[#05b875]/25"
+                            : novedadesHovered
+                            ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold"
+                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132247]/80"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${
-                            isActive 
-                              ? "text-white" 
-                              : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                          <Sparkles className={`h-4 w-4 shrink-0 ${
+                            isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse"
                           }`} />
-                          <span className="truncate">{item.label}</span>
+                          <span className="truncate font-extrabold">Novedades 2026</span>
                         </div>
 
-                        {item.badge && !isActive && (
-                          <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor}`}>
-                            {item.badge}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                            isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
+                          }`}>
+                            4 APPS
                           </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </div>
-            );
-          })}
-
-          {/* Administration Menu (Mantenedores) */}
-          {navGroups.slice(1).map((group, gIdx) => {
-            const filteredItems = group.items.filter(item => item.roles.includes(user.role));
-            if (filteredItems.length === 0) return null;
-
-            return (
-              <div key={gIdx} className="space-y-1">
-                <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1">
-                  {group.title}
-                </p>
-
-                <nav className="space-y-1">
-                  {filteredItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    const Icon = item.icon;
-
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
-                          isActive 
-                            ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25" 
-                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${
-                            isActive 
-                              ? "text-white" 
-                              : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                          <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                            novedadesHovered ? "translate-x-1 text-teal-500" : ""
                           }`} />
-                          <span className="truncate">{item.label}</span>
                         </div>
-                      </Link>
-                    );
-                  })}
-                </nav>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
-
-          {/* NOVEDADES 2026 - Trigger Item (Debajo de Mantenedores) */}
-          {novedadesItems.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-extrabold tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 py-1 flex items-center justify-between">
-                <span>NOVEDADES 2026</span>
-                <Sparkles className="h-3 w-3 text-amber-500 animate-pulse" />
-              </p>
-
-              <div 
-                ref={triggerRef}
-                onMouseEnter={handleMouseEnterTrigger}
-                onMouseLeave={handleMouseLeaveTrigger}
-                className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer select-none ${
-                  isNovedadesActive
-                    ? "bg-[#05b875] text-white font-extrabold shadow-lg shadow-[#05b875]/25"
-                    : novedadesHovered
-                    ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132247]/80"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Sparkles className={`h-4.5 w-4.5 shrink-0 ${
-                    isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse"
-                  }`} />
-                  <span className="truncate font-extrabold">Novedades 2026</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
-                    isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
-                  }`}>
-                    4 APPS
-                  </span>
-                  <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
-                    novedadesHovered ? "translate-x-1 text-teal-500" : ""
-                  }`} />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
       </div>
