@@ -55,7 +55,11 @@ export default function LoginPage() {
     const res = await loginAction(formData);
 
     if (res?.success) {
-      router.push("/");
+      if (res.role === 'CONSUMIDOR') {
+        router.push("/solicitar");
+      } else {
+        router.push("/");
+      }
       router.refresh();
     } else {
       setLoading(false);

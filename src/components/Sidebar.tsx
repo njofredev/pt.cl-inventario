@@ -29,7 +29,8 @@ import {
   ChevronDown,
   MapPin,
   Search,
-  Sliders
+  Sliders,
+  FolderTree
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -154,6 +155,9 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
           items: [
             { href: "/productos", label: "Catálogo / Stock Actual", icon: Package, roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
             { href: "/solicitudes", label: "Solicitudes de Insumos", icon: ClipboardList, roles: ["ADMIN", "OPERADOR"] },
+            { href: "/solicitar?tab=BUSCADOR", label: "Búsqueda Rápida", icon: Search, roles: ["CONSUMIDOR"] },
+            { href: "/solicitar?tab=CATALOGO", label: "Por Categorías", icon: FolderTree, roles: ["CONSUMIDOR"] },
+            { href: "/solicitar?tab=HISTORIAL", label: "Mis Solicitudes", icon: ClipboardList, roles: ["CONSUMIDOR"] },
           ]
         },
         {
@@ -191,6 +195,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
         {
           items: [
             { href: "/usuarios", label: "Gestión de Usuarios y Roles", icon: ShieldAlert, roles: ["ADMIN"] },
+            { href: "/configuracion", label: "Configuración de Empresa", icon: Sliders, roles: ["ADMIN", "CONTABLE"] },
           ]
         }
       ]
@@ -280,15 +285,15 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
         
         {/* Header / Brand */}
         <div className="flex items-center gap-3 px-2 pb-3 mb-1">
-          <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-2 shrink-0 shadow-xs">
+          <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-1 shrink-0 shadow-xs">
             <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight leading-snug truncate">
+            <h1 className="font-black text-sm tracking-tight text-slate-800 dark:text-slate-100">
               Policlínico Tabancura
             </h1>
             <p className="text-[10px] font-black tracking-wider text-teal-600 dark:text-[#00e699] uppercase leading-tight">
-              CONTROL INVENTARIO
+              {user.role === 'CONSUMIDOR' ? 'SOLICITUDES' : 'CONTROL INVENTARIO'}
             </p>
           </div>
         </div>
@@ -320,19 +325,21 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
             <div className="space-y-1">
               <Link
                 href={directTopItem.href}
-                className={`flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-full transition-all duration-200 group active-scale-down ${
+                className={`relative flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-full transition-all duration-200 ease-out group active:scale-[0.97] ${
                   pathname === directTopItem.href
-                    ? "bg-[#05b875] text-white font-bold shadow-lg shadow-[#05b875]/25"
-                    : "text-slate-700 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-200 dark:hover:text-white dark:hover:bg-[#132247]/60"
+                    ? "bg-[#05b875] text-white shadow-lg shadow-[#05b875]/30 translate-x-1"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/70 hover:translate-x-1"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <LayoutDashboard className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                  <LayoutDashboard className={`h-4.5 w-4.5 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 ${
                     pathname === directTopItem.href
                       ? "text-white"
-                      : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                      : "text-slate-400 group-hover:text-teal-600 dark:text-slate-400 dark:group-hover:text-teal-400"
                   }`} />
-                  <span className="truncate">{directTopItem.label}</span>
+                  <span className={`truncate ${pathname === directTopItem.href ? "text-white font-bold" : "group-hover:text-slate-900 dark:group-hover:text-white"}`}>
+                    {directTopItem.label}
+                  </span>
                 </div>
               </Link>
             </div>
@@ -344,11 +351,11 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
             const hasVisibleItems = group.subsections.some(sub => 
               sub.items.some(item => item.roles.includes(user.role))
             );
-            if (!hasVisibleItems && group.title !== "SISTEMA") return null;
+            if (!hasVisibleItems) return null;
 
             return (
-              <div key={gIdx} className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-                <p className="text-[9.5px] font-black tracking-widest text-slate-400 dark:text-slate-400 uppercase px-3 pt-1">
+              <div key={gIdx} className="space-y-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/70">
+                <p className="text-[9.5px] font-black tracking-widest text-slate-400/90 dark:text-slate-500 uppercase px-3 pt-0.5">
                   {group.title}
                 </p>
 
@@ -360,12 +367,12 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                     return (
                       <div key={sIdx} className="space-y-1">
                         {sub.label && (
-                          <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3.5 pt-0.5">
+                          <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400/80 dark:text-slate-500 px-3.5 pt-0.5">
                             {sub.label}
                           </p>
                         )}
 
-                        <nav className="space-y-0.5">
+                        <nav className="space-y-1">
                           {filteredSubItems.map((item: any) => {
                             const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
                             const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
@@ -375,23 +382,25 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                               <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center justify-between px-3.5 py-2 text-xs font-medium rounded-full transition-all duration-200 group active-scale-down ${
+                                className={`relative flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-full transition-all duration-200 ease-out group active:scale-[0.97] ${
                                   isActive 
-                                    ? "bg-[#05b875] text-white font-bold shadow-md shadow-[#05b875]/25" 
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/60"
+                                    ? "bg-[#05b875] text-white shadow-md shadow-[#05b875]/25 translate-x-1" 
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/70 hover:translate-x-1"
                                 }`}
                               >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                  <Icon className={`h-4 w-4 shrink-0 transition-colors ${
+                                  <Icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 ${
                                     isActive 
                                       ? "text-white" 
-                                      : "text-slate-400 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-white"
+                                      : "text-slate-400 group-hover:text-teal-600 dark:text-slate-400 dark:group-hover:text-teal-400"
                                   }`} />
-                                  <span className="truncate">{item.label}</span>
+                                  <span className={`truncate ${isActive ? "text-white font-bold" : "group-hover:text-slate-900 dark:group-hover:text-white"}`}>
+                                    {item.label}
+                                  </span>
                                 </div>
 
                                 {item.badge && !isActive && (
-                                  <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${item.badgeColor}`}>
+                                  <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-105 ${item.badgeColor}`}>
                                     {item.badge}
                                   </span>
                                 )}
@@ -410,28 +419,28 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                         ref={triggerRef}
                         onMouseEnter={handleMouseEnterTrigger}
                         onMouseLeave={handleMouseLeaveTrigger}
-                        className={`flex items-center justify-between px-3.5 py-2 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer select-none ${
+                        className={`relative flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer select-none active:scale-[0.97] ${
                           isNovedadesActive
-                            ? "bg-[#05b875] text-white font-extrabold shadow-md shadow-[#05b875]/25"
+                            ? "bg-gradient-to-r from-[#05b875] to-[#04a065] text-white font-extrabold shadow-md shadow-[#05b875]/25 ring-1 ring-white/20 translate-x-1"
                             : novedadesHovered
-                            ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold"
-                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#132247]/80"
+                            ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold translate-x-1"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-[#132247]/70 hover:translate-x-1"
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Sparkles className={`h-4 w-4 shrink-0 ${
-                            isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse"
+                          <Sparkles className={`h-4 w-4 shrink-0 transition-transform duration-300 ${
+                            isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse group-hover:scale-110"
                           }`} />
                           <span className="truncate font-extrabold">Novedades 2026</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full transition-transform duration-200 ${
                             isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
                           }`}>
                             4 APPS
                           </span>
-                          <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
+                          <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-300 ease-out ${
                             novedadesHovered ? "translate-x-1 text-teal-500" : ""
                           }`} />
                         </div>

@@ -320,3 +320,14 @@ model Destino {
   @@unique([nombre, sucursalId])
 }
 
+// 14. Configuración Global de Empresa / Sistema
+model ConfiguracionEmpresa {
+  id                  String   @id @default("DEFAULT")
+  nombreEmpresa       String   @default("Policlínico Tabancura")
+  rutEmpresa          String?  @default("76.123.456-7")
+  // "El PPP total calculado considera o no considera el IVA"
+  pppIncluyeIva       Boolean  @default(false) // false: Valor Neto (sin IVA, recomendado contable); true: Valor Bruto (con IVA)
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+}
+

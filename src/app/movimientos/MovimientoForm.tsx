@@ -26,14 +26,21 @@ interface Bodega {
   ubicaciones: Ubicacion[];
 }
 
+interface DestinoOption {
+  id: string;
+  nombre: string;
+  sucursal?: { nombre: string } | null;
+}
+
 interface Props {
   products: ProductOption[];
   bodegas: Bodega[];
+  destinos?: DestinoOption[];
   defaultTipo: string;
   forceEsEntrada?: boolean;
 }
 
-export default function MovimientoForm({ products, bodegas, defaultTipo, forceEsEntrada }: Props) {
+export default function MovimientoForm({ products, bodegas, destinos = [], defaultTipo, forceEsEntrada }: Props) {
   const [esEntrada, setEsEntrada] = useState(
     typeof forceEsEntrada === 'boolean' ? forceEsEntrada : defaultTipo === 'INGRESO'
   );
@@ -41,8 +48,10 @@ export default function MovimientoForm({ products, bodegas, defaultTipo, forceEs
   const [cantidad, setCantidad] = useState('');
   const [bodegaId, setBodegaId] = useState('');
   const [ubicacionId, setUbicacionId] = useState('');
+  const [destinoNombre, setDestinoNombre] = useState('');
+  const [recibidoPor, setRecibidoPor] = useState('');
   const [modoUnidad, setModoUnidad] = useState<'COMPRA' | 'CONSUMO'>('COMPRA');
-  const [status, setStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+  const [status, setStatus] = useState<{ success?: boolean; message?: string; correlativo?: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Sync state if prop changes (tab changes)
@@ -99,17 +108,27 @@ export default function MovimientoForm({ products, bodegas, defaultTipo, forceEs
     formData.append('esEntrada', esEntrada ? 'true' : 'false');
     formData.append('bodegaId', bodegaId);
     formData.append('ubicacionId', ubicacionId);
+    if (!esEntrada) {
+      if (destinoNombre) formData.append('destinoNombre', destinoNombre);
+      if (recibidoPor) formData.append('recibidoPor', recibidoPor);
+    }
 
     const res = await createTransaction(formData);
     setLoading(false);
 
     if (res.success) {
-      setStatus({ success: true, message: `Movimiento registrado exitosamente (${cantidadFinalCalculada} ${selectedProduct?.unidad || 'Unidades'} en Stock).` });
+      setStatus({ 
+        success: true, 
+        message: `${esEntrada ? 'Ingreso' : 'Egreso'} registrado con éxito.`,
+        correlativo: res.correlativo
+      });
       setCantidad('');
       setProductId('');
       setSearchQuery('');
       setBodegaId('');
       setUbicacionId('');
+      setDestinoNombre('');
+      setRecibidoPor('');
     } else {
       setStatus({ success: false, message: res.error });
     }
@@ -264,14 +283,59 @@ export default function MovimientoForm({ products, bodegas, defaultTipo, forceEs
         </select>
       </div>
 
-      {/* Status */}
+      {/* Additional fields for Salidas / Consumos */}
+      {!esEntrada && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+          {/* Destino Clínico */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Destino / Box / Sala (Opcional)
+            </label>
+            <select
+              value={destinoNombre}
+              onChange={(e) => setDestinoNombre(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+            >
+              <option value="">Selecciona destino clínico...</option>
+              {destinos.map(d => (
+                <option key={d.id} value={d.nombre}>
+                  {d.nombre} {d.sucursal?.nombre ? `(${d.sucursal.nombre})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Persona que Recibe */}
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Persona / Personal que Retira (Opcional)
+            </label>
+            <input
+              type="text"
+              value={recibidoPor}
+              onChange={(e) => setRecibidoPor(e.target.value)}
+              placeholder="Ej. Dra. Castillo / TENS Box 3"
+              className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Status Alert with Correlative Badge */}
       {status && (
         <div className={`p-3 text-xs font-semibold rounded-xl border ${
           status.success 
             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' 
             : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
         }`}>
-          {status.message}
+          <div className="flex items-center justify-between gap-2">
+            <span>{status.message}</span>
+            {status.correlativo && (
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-mono font-extrabold text-[11px] shadow-xs">
+                N° {status.correlativo}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

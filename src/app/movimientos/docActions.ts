@@ -151,16 +151,30 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
         },
       });
 
+      // Fetch Empresa configuration for PPP (Neto vs Con IVA)
+      const { getConfiguracionEmpresa } = await import('@/lib/empresaConfig');
+      const empresaConfig = await getConfiguracionEmpresa();
+      const pppConsideraIva = empresaConfig.pppIncluyeIva;
+
       // Process each item
       for (const item of input.items) {
-        // Calculate net unit price for inventory valuation (PPP)
-        let valorUnitarioNeto = item.precioUnitario;
-        if (item.esAfecto && item.incluyeIva) {
-          valorUnitarioNeto = item.precioUnitario / 1.19;
+        // Calculate unit price for inventory valuation (PPP)
+        let valorUnitarioValuacion = item.precioUnitario;
+
+        if (pppConsideraIva) {
+          // El PPP considera el IVA: Si el precio ingresado era neto afecto, se le suma el 19%
+          if (item.esAfecto && !item.incluyeIva) {
+            valorUnitarioValuacion = item.precioUnitario * 1.19;
+          }
+        } else {
+          // El PPP NO considera el IVA (Valor Neto): Si venía con IVA, se le descuenta el 19%
+          if (item.esAfecto && item.incluyeIva) {
+            valorUnitarioValuacion = item.precioUnitario / 1.19;
+          }
         }
 
-        // Round to 2 decimals for net unit price
-        valorUnitarioNeto = Math.round(valorUnitarioNeto * 100) / 100;
+        // Round to 2 decimals
+        const valorUnitarioFinal = Math.round(valorUnitarioValuacion * 100) / 100;
 
         // Resolve or fallback Ubicacion if not explicitly set
         let finalUbicacionId = item.ubicacionId;
@@ -204,8 +218,8 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
             productoId: item.productoId,
             tipoMovimientoId: tipoMov.id,
             cantidad: item.cantidad,
-            valorUnitario: valorUnitarioNeto,
-            pppCalculado: valorUnitarioNeto,
+            valorUnitario: valorUnitarioFinal,
+            pppCalculado: valorUnitarioFinal,
             bodegaId: item.bodegaId || null,
             ubicacionId: finalUbicacionId || null,
             proveedorId: proveedor.id,

@@ -39,6 +39,7 @@ export async function globalSearchAction(query: string): Promise<GlobalSearchRes
     { title: 'Destinos Clínicos', subtitle: 'Centros de costo, boxes y clínicas receptoras', href: '/destinos', keywords: 'destinos centros costo boxes salas' },
     { title: 'Proveedores', subtitle: 'Directorio de empresas, RUTs y contactos', href: '/proveedores', keywords: 'proveedores empresas rut contactos' },
     { title: 'Gestión de Usuarios', subtitle: 'Administración de usuarios, roles y accesos', href: '/usuarios', keywords: 'usuarios roles cuentas contraseñas permisos' },
+    { title: 'Configuración de Empresa', subtitle: 'Parámetros globales del sistema y cálculo de PPP con/sin IVA', href: '/configuracion', keywords: 'configuracion empresa parametros ppp iva calculo sistema impuestos' },
   ];
 
   const qLower = q.toLowerCase();

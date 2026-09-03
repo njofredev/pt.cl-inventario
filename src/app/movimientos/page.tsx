@@ -62,14 +62,25 @@ export default async function MovimientosPage(props: PageProps) {
     },
   });
 
-  // 4. Fetch recent movements from DB (filtered by permissions)
+  // 4. Fetch Destinos Clínicos list (para salidas/consumos)
+  const destinos = await prisma.destino.findMany({
+    include: {
+      sucursal: true,
+    },
+    orderBy: [
+      { sucursal: { nombre: "asc" } },
+      { nombre: "asc" },
+    ],
+  });
+
+  // 5. Fetch recent movements from DB (filtered by permissions)
   const movementsWhere = permissions?.isFiltered
     ? { bodegaId: { in: permissions.bodegasIds } }
     : {};
 
   const movements = await prisma.movimiento.findMany({
     where: movementsWhere,
-    take: 20,
+    take: 100,
     orderBy: {
       fecha: "desc",
     },
@@ -78,6 +89,7 @@ export default async function MovimientosPage(props: PageProps) {
         select: {
           codigo: true,
           nombre: true,
+          unidad: true,
         },
       },
       tipoMovimiento: true,
@@ -91,10 +103,16 @@ export default async function MovimientosPage(props: PageProps) {
           nombre: true,
         },
       },
+      usuario: {
+        select: {
+          nombre: true,
+          username: true,
+        },
+      },
     },
   });
 
-  // 5. Fetch DocumentoMovimientos for Pending Reconciliation & Alerts
+  // 6. Fetch DocumentoMovimientos for Pending Reconciliation & Alerts
   const documentosPendientes = await prisma.documentoMovimiento.findMany({
     orderBy: {
       fechaDocumento: "desc",
@@ -119,15 +137,26 @@ export default async function MovimientosPage(props: PageProps) {
     },
   });
 
+  const isSalida = defaultTab === "EGRESO_DIRECTO";
+  const isHistorial = defaultTab === "HISTORIAL";
+
   return (
     <div className="space-y-5 w-full">
-      {/* Header */}
+      {/* Header Dinámico */}
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
-          Operaciones de Inventario: Entradas & Salidas
+          {isHistorial 
+            ? "Histórico y Bitácora de Movimientos" 
+            : isSalida 
+              ? "Salidas de Bodega: Consumo Clínico y Despachos" 
+              : "Entradas de Bodega: Recepción y Compras"}
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Gestiona ingresos por compras comerciales (Facturas y Guías), salidas para consumo clínico o consultas de bitácora.
+          {isHistorial 
+            ? "Auditoría cronológica y trazabilidad de todos los ingresos y egresos registrados." 
+            : isSalida 
+              ? "Registra la entrega directa de materiales a profesionales, boxes clínicos y servicios." 
+              : "Ingreso de materiales por compras comerciales (Facturas y Guías de Despacho) o ajustes directos."}
         </p>
       </div>
 
@@ -136,6 +165,7 @@ export default async function MovimientosPage(props: PageProps) {
           products={JSON.parse(JSON.stringify(products))}
           bodegas={JSON.parse(JSON.stringify(bodegas))}
           proveedores={JSON.parse(JSON.stringify(proveedores))}
+          destinos={JSON.parse(JSON.stringify(destinos))}
           movements={JSON.parse(JSON.stringify(movements))}
           documentosPendientes={JSON.parse(JSON.stringify(documentosPendientes))}
           defaultTab={defaultTab}

@@ -43,7 +43,7 @@ export async function loginAction(formData: FormData) {
       path: '/'
     })
 
-    return { success: true }
+    return { success: true, role: user.role }
   } catch (error: any) {
     return { error: "Ocurrió un error al iniciar sesión." }
   }

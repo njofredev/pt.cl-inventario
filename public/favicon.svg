@@ -1,0 +1,37 @@
+<svg id="tabancura-favicon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#162158" />
+    </linearGradient>
+    <linearGradient id="teal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#05b875" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Fondo redondo pulido premium -->
+  <rect width="64" height="64" rx="16" fill="url(#bg-grad)" />
+  <rect width="62" height="62" x="1" y="1" rx="15" fill="none" stroke="#227262" stroke-width="1.5" stroke-opacity="0.4" />
+
+  <!-- Anillo exterior orgánico representativo del Policlínico Tabancura -->
+  <path d="M52,32 C52,43.04 43.04,52 32,52 C20.96,52 12,43.04 12,32 C12,20.96 20.96,12 32,12 C37.5,12 42.5,14.2 46.1,17.8" 
+        fill="none" 
+        stroke="url(#teal-grad)" 
+        stroke-width="3.5" 
+        stroke-linecap="round" 
+        filter="url(#glow)" />
+
+  <!-- Cruz médica estilizada en el centro -->
+  <g fill="#23b574">
+    <rect x="28.5" y="21" width="7" height="22" rx="3.5" />
+    <rect x="21" y="28.5" width="22" height="7" rx="3.5" />
+  </g>
+
+  <!-- Puntos activos clínicos complementarios (Verde y Azul) -->
+  <circle cx="47" cy="18" r="3.2" fill="#0f8fef" />
+  <circle cx="32" cy="32" r="2.2" fill="#ffffff" />
+</svg>

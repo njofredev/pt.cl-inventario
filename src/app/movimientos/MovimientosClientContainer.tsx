@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, ReceiptText, Clock, MapPin, Layers, History, Plus, Minus } from 'lucide-react';
+import { Building2, ReceiptText, Clock, MapPin, Layers, History, Plus, Minus, Search, Tag, ArrowDownLeft, ArrowUpRight, Calendar } from 'lucide-react';
 import MovimientoComprasForm from './MovimientoComprasForm';
 import MovimientoForm from './MovimientoForm';
 import RecepcionesPendientesList from './RecepcionesPendientesList';
@@ -11,6 +11,7 @@ interface Props {
   products: any[];
   bodegas: any[];
   proveedores: any[];
+  destinos?: any[];
   movements: any[];
   documentosPendientes: any[];
   defaultTab?: string;
@@ -20,6 +21,7 @@ export default function MovimientosClientContainer({
   products,
   bodegas,
   proveedores,
+  destinos = [],
   movements,
   documentosPendientes,
   defaultTab = 'COMPRAS',
@@ -39,6 +41,11 @@ export default function MovimientosClientContainer({
     return resolveTab(queryTab || defaultTab);
   });
 
+  // Bitácora filtering states
+  const [historialFilter, setHistorialFilter] = useState<'TODOS' | 'ENTRADAS' | 'SALIDAS'>('TODOS');
+  const [searchBitacora, setSearchBitacora] = useState('');
+  const [bodegaFilter, setBodegaFilter] = useState('TODAS');
+
   // Keep state in sync if URL query parameter changes via Sidebar clicks
   useEffect(() => {
     if (queryTab) {
@@ -52,136 +59,167 @@ export default function MovimientosClientContainer({
   const facturasNotaCreditoCount = documentosPendientes.filter(d => d.tipoDocumento === 'FACTURA' && d.estadoConciliacion === 'REQUIERE_NOTA_CREDITO').length;
   const totalAlertasCount = guiasPendientesCount + facturasNotaCreditoCount;
 
+  // Bitacora counts and filtered list
+  const totalEntradas = movements.filter(m => m.tipoMovimiento.esEntrada).length;
+  const totalSalidas = movements.filter(m => !m.tipoMovimiento.esEntrada).length;
+
+  const filteredMovements = movements.filter(m => {
+    // 1. Tipo filter
+    if (historialFilter === 'ENTRADAS' && !m.tipoMovimiento.esEntrada) return false;
+    if (historialFilter === 'SALIDAS' && m.tipoMovimiento.esEntrada) return false;
+
+    // 2. Bodega filter
+    if (bodegaFilter !== 'TODAS' && m.bodegaId !== bodegaFilter) return false;
+
+    // 3. Search query filter (producto, codigo, correlativo, receptor, doc)
+    if (searchBitacora.trim()) {
+      const q = searchBitacora.toLowerCase();
+      const matchName = m.product?.nombre?.toLowerCase().includes(q);
+      const matchCode = m.product?.codigo?.toLowerCase().includes(q);
+      const matchCorrelativo = m.documentoNumero?.toLowerCase().includes(q);
+      const matchDocTipo = m.documentoTipo?.toLowerCase().includes(q);
+      const matchReceptor = m.recibidoPor?.toLowerCase().includes(q);
+      const matchBodega = m.bodega?.nombre?.toLowerCase().includes(q);
+      const matchUser = m.usuario?.nombre?.toLowerCase().includes(q);
+
+      if (!matchName && !matchCode && !matchCorrelativo && !matchDocTipo && !matchReceptor && !matchBodega && !matchUser) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   return (
     <div className="space-y-6">
-      {/* Visual Operational Bar (Entradas vs Salidas vs Gestión) - Visible en Compras/Ingresos/Egresos/Pendientes */}
+      {/* Visual Operational Bar dedicada: Exclusiva para ENTRADAS o para SALIDAS */}
       {activeTab !== 'HISTORIAL' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Pilar 1: ENTRADAS DE STOCK */}
-          <div 
-            onClick={() => setActiveTab(activeTab === 'INGRESO_DIRECTO' ? 'INGRESO_DIRECTO' : 'COMPRAS')}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-            activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO'
-              ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 shadow-md shadow-emerald-500/10'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
-          }`}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`p-2.5 rounded-xl ${
-              activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600'
-            }`}>
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                Aumenta Stock (+)
-              </span>
-              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                Recepción & Compras
-              </h3>
-            </div>
-          </div>
+        <>
+          {/* Si estamos en ENTRADAS (COMPRAS o INGRESO_DIRECTO) */}
+          {(activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO' || activeTab === 'PENDIENTES') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Pilar 1: RECEPCIÓN & COMPRAS / AJUSTE DE ENTRADA */}
+              <div 
+                onClick={() => setActiveTab(activeTab === 'INGRESO_DIRECTO' ? 'INGRESO_DIRECTO' : 'COMPRAS')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                  activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO'
+                    ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 shadow-md shadow-emerald-500/10'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2.5 rounded-xl ${
+                    activeTab === 'COMPRAS' || activeTab === 'INGRESO_DIRECTO'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600'
+                  }`}>
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      Aumenta Stock (+)
+                    </span>
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                      Recepción & Compras
+                    </h3>
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setActiveTab('COMPRAS'); }}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors ${
-                activeTab === 'COMPRAS'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
-              }`}
-              title="Facturas y Guías de Proveedores"
-            >
-              Factura / Guía
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setActiveTab('INGRESO_DIRECTO'); }}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors ${
-                activeTab === 'INGRESO_DIRECTO'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
-              }`}
-              title="Ajuste manual de entrada"
-            >
-              Ajuste Directo
-            </button>
-          </div>
-        </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActiveTab('COMPRAS'); }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      activeTab === 'COMPRAS'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                    title="Facturas y Guías de Proveedores"
+                  >
+                    Factura / Guía
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setActiveTab('INGRESO_DIRECTO'); }}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      activeTab === 'INGRESO_DIRECTO'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                    title="Ajuste manual de entrada"
+                  >
+                    Ajuste Directo
+                  </button>
+                </div>
+              </div>
 
-        {/* Pilar 2: SALIDAS DE STOCK */}
-        <div 
-          onClick={() => setActiveTab('EGRESO_DIRECTO')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-            activeTab === 'EGRESO_DIRECTO'
-              ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-500 shadow-md shadow-amber-500/10'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-300'
-          }`}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`p-2.5 rounded-xl ${
-              activeTab === 'EGRESO_DIRECTO'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'bg-amber-100 dark:bg-amber-950 text-amber-600'
-            }`}>
-              <Minus className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                Descuenta Stock (-)
-              </span>
-              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                Salida / Consumo Clínico
-              </h3>
-            </div>
-          </div>
+              {/* Pilar 2: CONTROL Y CONCILIACIÓN (Guías Pendientes) */}
+              <div 
+                onClick={() => setActiveTab('PENDIENTES')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                  activeTab === 'PENDIENTES'
+                    ? 'bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-500 shadow-md shadow-indigo-500/10'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2.5 rounded-xl ${
+                    activeTab === 'PENDIENTES'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600'
+                  }`}>
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Control & Conciliación
+                    </span>
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                      Guías Pendientes
+                    </h3>
+                  </div>
+                </div>
 
-          <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg ${
-            activeTab === 'EGRESO_DIRECTO' ? 'bg-amber-600 text-white' : 'text-slate-400'
-          }`}>
-            Despacho
-          </span>
-        </div>
-
-        {/* Pilar 3: PENDIENTES & AUDITORÍA */}
-        <div 
-          onClick={() => setActiveTab('PENDIENTES')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-            activeTab === 'PENDIENTES'
-              ? 'bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-500 shadow-md shadow-indigo-500/10'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
-          }`}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`p-2.5 rounded-xl ${
-              activeTab === 'PENDIENTES'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600'
-            }`}>
-              <Clock className="h-5 w-5" />
+                {totalAlertasCount > 0 ? (
+                  <span className="px-2.5 py-1 text-[10px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+                    {totalAlertasCount} por facturar
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400 font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
+                    Al día
+                  </span>
+                )}
+              </div>
             </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                Control & Conciliación
-              </span>
-              <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                Guías Pendientes
-              </h3>
-            </div>
-          </div>
-
-          {totalAlertasCount > 0 ? (
-            <span className="px-2.5 py-1 text-[10px] font-black rounded-full bg-rose-500 text-white animate-pulse">
-              {totalAlertasCount} por facturar
-            </span>
-          ) : (
-            <span className="text-[11px] text-slate-400 font-medium">Al día</span>
           )}
-        </div>
-      </div>
+
+          {/* Si estamos en SALIDAS (EGRESO_DIRECTO) */}
+          {activeTab === 'EGRESO_DIRECTO' && (
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-3.5">
+              <div 
+                className="p-4 rounded-2xl border bg-amber-50/80 dark:bg-amber-950/30 border-amber-500 shadow-md shadow-amber-500/10 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="p-2.5 rounded-xl bg-amber-600 text-white shadow-sm">
+                    <Minus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      Descuenta Stock (-)
+                    </span>
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                      Salida / Consumo Clínico
+                    </h3>
+                  </div>
+                </div>
+
+                <span className="px-3.5 py-1 text-xs font-black rounded-lg bg-amber-600 text-white shadow-xs">
+                  Egreso Directo
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Main View Layout */}
@@ -221,6 +259,7 @@ export default function MovimientosClientContainer({
               <MovimientoForm
                 products={products}
                 bodegas={bodegas}
+                destinos={destinos}
                 defaultTipo="INGRESO"
                 forceEsEntrada={true}
               />
@@ -231,16 +270,17 @@ export default function MovimientosClientContainer({
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-                  Egreso Directo de Stock (Consumo / Ajuste)
+                  Egreso Directo de Stock (Consumo Clínico / Ajuste)
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Registra salidas directas de stock por consumo interno, rotura o ajustes negativos.
+                  Registra salidas directas de stock por consumo interno, asignación a Box/Servicio o mermas con generación de identificador correlativo.
                 </p>
               </div>
 
               <MovimientoForm
                 products={products}
                 bodegas={bodegas}
+                destinos={destinos}
                 defaultTipo="EGRESO"
                 forceEsEntrada={false}
               />
@@ -254,63 +294,183 @@ export default function MovimientosClientContainer({
           )}
 
           {activeTab === 'HISTORIAL' && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-5">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                    <History className="h-4 w-4 text-teal-600" />
-                    Bitácora de Movimientos Registrados
+                    <History className="h-4.5 w-4.5 text-teal-600" />
+                    Bitácora y Registro de Movimientos
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Historial cronológico de entradas y salidas registradas en las bodegas autorizadas.
+                    Historial cronológico con identificador correlativo único para trazabilidad completa de entradas y salidas.
                   </p>
+                </div>
+
+                {/* Filtro Rápido Tipo (Todos / Entradas / Salidas) */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+                  <button
+                    onClick={() => setHistorialFilter('TODOS')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      historialFilter === 'TODOS'
+                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                    }`}
+                  >
+                    Todos ({movements.length})
+                  </button>
+                  <button
+                    onClick={() => setHistorialFilter('ENTRADAS')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                      historialFilter === 'ENTRADAS'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                    }`}
+                  >
+                    <ArrowDownLeft className="h-3 w-3" /> Entradas (+{totalEntradas})
+                  </button>
+                  <button
+                    onClick={() => setHistorialFilter('SALIDAS')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                      historialFilter === 'SALIDAS'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                    }`}
+                  >
+                    <ArrowUpRight className="h-3 w-3" /> Salidas (-{totalSalidas})
+                  </button>
                 </div>
               </div>
 
-              {movements.length === 0 ? (
-                <p className="text-xs text-slate-400 dark:text-slate-500 py-8 text-center">
-                  No hay movimientos registrados actualmente.
-                </p>
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800 space-y-2">
-                  {movements.map((t) => (
-                    <div 
-                      key={t.id}
-                      className="py-3 px-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-xl transition-colors flex items-center justify-between gap-4"
+              {/* Barra de Filtro y Búsqueda */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchBitacora}
+                    onChange={(e) => setSearchBitacora(e.target.value)}
+                    placeholder="Buscar por producto, código, correlativo (N° SAL-... / ING-...), documento o personal..."
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                  />
+                  {searchBitacora && (
+                    <button
+                      onClick={() => setSearchBitacora('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
                     >
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                            {t.product.nombre}
-                          </p>
-                          <span className="font-mono text-[10px] text-slate-400">
-                            ({t.product.codigo})
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {bodegas.length > 1 && (
+                  <select
+                    value={bodegaFilter}
+                    onChange={(e) => setBodegaFilter(e.target.value)}
+                    className="px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium shrink-0"
+                  >
+                    <option value="TODAS">Todas las Bodegas</option>
+                    {bodegas.map(b => (
+                      <option key={b.id} value={b.id}>{b.nombre}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {filteredMovements.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <History className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    No se encontraron movimientos con los filtros aplicados.
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    Prueba cambiando el criterio de búsqueda o seleccionando "Todos".
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 space-y-1">
+                  {filteredMovements.map((t) => {
+                    const isEntrada = t.tipoMovimiento.esEntrada;
+                    const correlativo = t.documentoNumero || (t.id ? `#${t.id.slice(-6).toUpperCase()}` : 'S/N');
+                    const isSystemCorrelative = t.documentoNumero && (t.documentoNumero.startsWith('SAL-') || t.documentoNumero.startsWith('ING-'));
+
+                    return (
+                      <div 
+                        key={t.id}
+                        className="py-3 px-3.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {/* Badge Correlativo */}
+                            <span className={`inline-flex items-center gap-1 font-mono text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md ${
+                              isEntrada 
+                                ? 'bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70' 
+                                : 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70'
+                            }`}>
+                              <Tag className="h-2.5 w-2.5" />
+                              {correlativo}
+                            </span>
+
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                              {t.product.nombre}
+                            </p>
+                            <span className="font-mono text-[10px] text-slate-400">
+                              ({t.product.codigo})
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-400">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">
+                              {new Date(t.fecha).toLocaleDateString('es-CL', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+
+                            {t.documentoTipo && !isSystemCorrelative && (
+                              <span className="font-semibold text-slate-600 dark:text-slate-300">
+                                {t.documentoTipo} N° {t.documentoNumero}
+                              </span>
+                            )}
+
+                            {t.bodega && (
+                              <span className="text-teal-600 dark:text-teal-400 flex items-center gap-1 font-medium">
+                                <MapPin className="h-3 w-3 shrink-0" /> {t.bodega.nombre} {t.ubicacion && `(${t.ubicacion.nombre})`}
+                              </span>
+                            )}
+
+                            {t.recibidoPor && (
+                              <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                Destino: <strong className="font-bold">{t.recibidoPor}</strong>
+                              </span>
+                            )}
+
+                            {t.usuario?.nombre && (
+                              <span className="text-slate-400 text-[9.5px]">
+                                Por: {t.usuario.nombre}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Cantidad Flotante */}
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 pl-2">
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-black border ${
+                            isEntrada 
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                          }`}>
+                            {isEntrada ? '+' : '-'} {t.cantidad} {t.product.unidad || 'Unid.'}
+                          </span>
+                          <span className="text-[9.5px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+                            {t.tipoMovimiento.nombre || (isEntrada ? 'Entrada' : 'Salida')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400">
-                          <span>{new Date(t.fecha).toLocaleDateString('es-CL')}</span>
-                          {t.documentoTipo && (
-                            <span className="font-semibold text-slate-600 dark:text-slate-300">
-                              {t.documentoTipo} N° {t.documentoNumero || 'S/N'}
-                            </span>
-                          )}
-                          {t.bodega && (
-                            <span className="text-teal-600 dark:text-teal-400 flex items-center gap-1">
-                              <MapPin className="h-3 w-3" /> {t.bodega.nombre} {t.ubicacion && `(${t.ubicacion.nombre})`}
-                            </span>
-                          )}
-                        </div>
                       </div>
-
-                      <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-black border shrink-0 ${
-                        t.tipoMovimiento.esEntrada 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
-                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-                      }`}>
-                        {t.tipoMovimiento.esEntrada ? '+' : '-'} {t.cantidad}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -357,14 +517,31 @@ export default function MovimientosClientContainer({
                         </span>
                       </div>
 
-                      <p className="text-[10px] text-slate-400">
-                        Código: <span className="font-mono text-slate-600 dark:text-slate-300">{t.product.codigo}</span>
-                        {t.documentoTipo && ` | ${t.documentoTipo} N° ${t.documentoNumero || ''}`}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Fecha del movimiento */}
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                          <Calendar className="h-2.5 w-2.5 text-slate-400" />
+                          {new Date(t.fecha).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+
+                        {t.documentoNumero && (
+                          <span className="font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60">
+                            {t.documentoNumero}
+                          </span>
+                        )}
+                        <span className="font-mono text-[9.5px] text-slate-400">
+                          {t.product.codigo}
+                        </span>
+                        {t.recibidoPor && (
+                          <span className="text-[9.5px] text-teal-600 dark:text-teal-400 font-medium truncate max-w-[130px]">
+                            • {t.recibidoPor}
+                          </span>
+                        )}
+                      </div>
 
                       {t.bodega && t.ubicacion && (
-                        <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
-                          <MapPin className="h-3 w-3 shrink-0" /> {t.bodega.nombre} ({t.ubicacion.nombre})
+                        <p className="text-[10px] text-slate-400 dark:text-slate-400 font-medium flex items-center gap-1">
+                          <MapPin className="h-2.5 w-2.5 text-teal-600 dark:text-teal-400 shrink-0" /> {t.bodega.nombre} ({t.ubicacion.nombre})
                         </p>
                       )}
                     </div>

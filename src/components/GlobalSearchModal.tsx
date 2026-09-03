@@ -40,12 +40,22 @@ export default function GlobalSearchModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Focus input on open
+  const resetSearchState = () => {
+    setQuery('');
+    setResults([]);
+    setSelectedIndex(0);
+    setSelectedProductId(null);
+  };
+
+  const handleClose = () => {
+    resetSearchState();
+    onClose();
+  };
+
+  // Focus input and cleanly reset state whenever modal opens
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setResults([]);
-      setSelectedIndex(0);
+      resetSearchState();
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
@@ -81,18 +91,39 @@ export default function GlobalSearchModal({
   // Handle item selection
   const handleSelectItem = (item: GlobalSearchResultItem) => {
     if (item.type === 'PAGE' && item.href) {
-      onClose();
+      handleClose();
       router.push(item.href);
     } else if (item.type === 'PRODUCT') {
+      // Clear previous search query so that next time it opens it starts from scratch
+      setQuery('');
+      setResults([]);
       setSelectedProductId(item.id);
     }
   };
+
+  // Global window Escape key listener when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // If ProductDetailModal is open on top, don't close GlobalSearchModal simultaneously
+        if (selectedProductId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown, true);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown, true);
+  }, [isOpen, selectedProductId]);
 
   // Keyboard navigation inside modal
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      onClose();
+      handleClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
@@ -113,7 +144,7 @@ export default function GlobalSearchModal({
     <>
       <div 
         className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-start justify-center p-3 sm:p-6 pt-[12vh] animate-in fade-in duration-150"
-        onClick={onClose}
+        onClick={handleClose}
       >
         <div 
           className="bg-white dark:bg-[#0c1527] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 flex flex-col font-sans animate-in zoom-in-95 duration-150"
@@ -133,20 +164,35 @@ export default function GlobalSearchModal({
               className="flex-1 bg-transparent border-none text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-0"
             />
 
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
-            ) : query ? (
+            {loading && (
+              <Loader2 className="h-4 w-4 animate-spin text-teal-600 shrink-0" />
+            )}
+
+            {query ? (
               <button 
-                onClick={() => setQuery('')}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  inputRef.current?.focus();
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                title="Limpiar búsqueda"
               >
                 <X className="h-4 w-4" />
               </button>
             ) : null}
 
-            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200/60 dark:bg-slate-800 text-[10px] font-mono text-slate-500 font-bold">
-              <span>ESC</span>
-            </div>
+            {/* Explicit Close Button with ESC badge */}
+            <button
+              type="button"
+              onClick={handleClose}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-200/70 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 text-slate-500 transition-all cursor-pointer border border-transparent hover:border-rose-200 dark:hover:border-rose-800 shrink-0 group"
+              title="Cerrar buscador (ESC)"
+            >
+              <span className="text-[10px] font-mono font-black group-hover:hidden">ESC</span>
+              <X className="h-3.5 w-3.5 hidden group-hover:block" />
+              <span className="text-[10px] font-bold hidden group-hover:inline">Cerrar</span>
+            </button>
           </div>
 
           {/* Results List or Quick Guides */}
@@ -265,7 +311,10 @@ export default function GlobalSearchModal({
           productId={selectedProductId}
           cuentasContables={cuentasContables}
           unidadesMedida={unidadesMedida}
-          onClose={() => setSelectedProductId(null)}
+          onClose={() => {
+            setSelectedProductId(null);
+            handleClose();
+          }}
         />
       )}
     </>

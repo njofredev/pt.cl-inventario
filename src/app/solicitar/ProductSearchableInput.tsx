@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, Check, Package, Plus } from 'lucide-react';
-import QuickCreateProductModal from '@/components/QuickCreateProductModal';
+import { Search, X, Check, Package } from 'lucide-react';
 
 interface Product {
   id: string;
   codigo: string;
   nombre: string;
+  clasificacion?: string | null;
+  tipoProducto?: string | null;
   unidad: string | null;
   unidadCompra?: string | null;
   unidadesPorEnvase?: number | null;
   unidadEnvase?: string | null;
   unidadesPorConsumo?: number | null;
+  stockTotal?: number;
 }
 
 interface ProductSearchableInputProps {
@@ -33,7 +35,6 @@ export default function ProductSearchableInput({
   const [productsList, setProductsList] = useState<Product[]>(initialProducts);
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,61 +153,40 @@ export default function ProductSearchableInput({
                             {p.nombre}
                           </span>
                         </div>
-                        {p.unidad && (
-                          <span className="text-[9px] font-extrabold text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded shrink-0">
-                            {p.unidad}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {(p.stockTotal ?? 0) > 0 ? (
+                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded">
+                              Stock: {p.stockTotal}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded">
+                              A pedido
+                            </span>
+                          )}
+                          {p.unidad && (
+                            <span className="text-[9px] font-extrabold text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                              {p.unidad}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsQuickCreateOpen(true);
-                      setIsOpen(false);
-                    }}
-                    className="w-full p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-teal-600 dark:text-teal-400 font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer border-t border-slate-100 dark:border-slate-800"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>¿No está en la lista? Crear producto nuevo</span>
-                  </button>
                 </>
               ) : query.trim().length > 0 ? (
-                <div className="p-3 bg-amber-50/80 dark:bg-slate-800/90 text-center space-y-2">
-                  <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
-                    ⚠️ El insumo "{query}" no existe en el catálogo.
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-800 text-center space-y-1">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                    No se encontró "{query}" en el catálogo
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsQuickCreateOpen(true);
-                      setIsOpen(false);
-                    }}
-                    className="w-full py-2 px-3 bg-[#05b875] hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md transition-all active-scale-down cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Crear "{query}" en el Catálogo</span>
-                  </button>
+                  <p className="text-[11px] text-slate-400">
+                    Solo puedes solicitar insumos previamente ingresados por los encargados de bodega.
+                  </p>
                 </div>
               ) : null}
             </div>
           )}
         </div>
       )}
-
-      {/* Quick Create Product Popup Modal */}
-      <QuickCreateProductModal
-        isOpen={isQuickCreateOpen}
-        initialSearchQuery={query}
-        onClose={() => setIsQuickCreateOpen(false)}
-        onProductCreated={(newProd) => {
-          setProductsList(prev => [...prev, newProd]);
-          onSelect(newProd);
-          setQuery('');
-        }}
-      />
     </div>
   );
 }

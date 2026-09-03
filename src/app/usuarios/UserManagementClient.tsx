@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createUserAction, updateUserAction, deleteUserAction } from "./actions";
-import { UserCog, ShieldCheck, User, UserPlus, Pencil, Trash2, X, Save, Building2, Warehouse } from "lucide-react";
+import { UserCog, ShieldCheck, User, UserPlus, Pencil, Trash2, X, Save, Building2, Warehouse, ShoppingCart, Search, Filter, ClipboardList } from "lucide-react";
 
 interface Sucursal {
   id: string;
@@ -186,25 +186,46 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
     });
   };
 
+  // Role filter tabs
+  const [roleFilter, setRoleFilter] = useState<'TODOS' | 'CONSUMIDOR' | 'OPERADORES' | 'ADMIN'>('TODOS');
+  const [searchUser, setSearchUser] = useState('');
+
+  const filteredUsers = users.filter(u => {
+    if (roleFilter === 'CONSUMIDOR' && u.role !== 'CONSUMIDOR') return false;
+    if (roleFilter === 'OPERADORES' && (u.role === 'CONSUMIDOR' || u.role === 'ADMIN')) return false;
+    if (roleFilter === 'ADMIN' && u.role !== 'ADMIN') return false;
+
+    if (searchUser.trim()) {
+      const q = searchUser.toLowerCase();
+      return u.nombre.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
+    }
+
+    return true;
+  });
+
+  const consumidoresCount = users.filter(u => u.role === 'CONSUMIDOR').length;
+  const operadoresCount = users.filter(u => u.role === 'USER' || u.role === 'OPERADOR').length;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* User Creation/Edition Form Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm h-fit space-y-4 transition-all duration-300">
-        <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <UserCog className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-            {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
-          </span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* User Form Card */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <UserCog className="h-5 w-5 text-teal-600" />
+            <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+              {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
+            </h2>
+          </div>
           {editingUser && (
-            <button
+            <button 
               onClick={resetForm}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-              title="Cancelar edición"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" /> Cancelar
             </button>
           )}
-        </h2>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* Name */}
@@ -262,10 +283,25 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
               required
               className="w-full px-3.5 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
             >
-              <option value="USER" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Auxiliar (Lectura y Movimientos)</option>
-              <option value="ADMIN" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Administrador (Control total y Usuarios)</option>
-              <option value="CONTABLE" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">Contable (Lectura y Reportes)</option>
+              <option value="CONSUMIDOR" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                Consumidor (Solo Portal de Solicitud de Insumos)
+              </option>
+              <option value="USER" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                Operador / Bodeguero (Entradas y Salidas de Bodega)
+              </option>
+              <option value="ADMIN" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                Administrador (Control Total del Sistema)
+              </option>
+              <option value="CONTABLE" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                Contable (Lectura, Auditoría y Kardex)
+              </option>
             </select>
+            <p className="text-[10px] text-slate-400 mt-1">
+              {role === 'CONSUMIDOR' && 'Este usuario solo tendrá acceso al Portal de Solicitud de Insumos para pedir materiales.'}
+              {role === 'USER' && 'Acceso operativo a bodegas para registrar entradas, salidas físicas y conciliar stock.'}
+              {role === 'ADMIN' && 'Acceso irrestricto a todos los módulos, parámetros, usuarios y bodegas.'}
+              {role === 'CONTABLE' && 'Acceso a balances, reportes, precios y bitácoras valorizadas.'}
+            </p>
           </div>
 
           {/* Permisos de Sucursal */}
@@ -363,9 +399,76 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
 
       {/* User List Table Card */}
       <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-        <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-800 pb-3">
-          Usuarios Registrados
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+              Cuentas Registradas ({filteredUsers.length})
+            </h2>
+          </div>
+
+          {/* Search bar */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchUser}
+              onChange={(e) => setSearchUser(e.target.value)}
+              placeholder="Buscar por nombre o usuario..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+            />
+          </div>
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setRoleFilter('TODOS')}
+            className={`px-3 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              roleFilter === 'TODOS'
+                ? 'bg-[#162158] dark:bg-teal-600 text-white shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            Todos ({users.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('CONSUMIDOR')}
+            className={`px-3 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              roleFilter === 'CONSUMIDOR'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'
+            }`}
+          >
+            <ShoppingCart className="h-3 w-3" />
+            Consumidores ({consumidoresCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('OPERADORES')}
+            className={`px-3 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              roleFilter === 'OPERADORES'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 hover:bg-blue-100'
+            }`}
+          >
+            <User className="h-3 w-3" />
+            Bodegueros / Operadores ({operadoresCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('ADMIN')}
+            className={`px-3 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              roleFilter === 'ADMIN'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 hover:bg-purple-100'
+            }`}
+          >
+            <ShieldCheck className="h-3 w-3" />
+            Admins
+          </button>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -380,85 +483,110 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-              {users.map((user) => (
-                <tr key={user.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ${editingUser?.id === user.id ? 'bg-teal-500/5 dark:bg-teal-500/10' : ''}`}>
-                  <td className="p-3 font-bold text-slate-800 dark:text-slate-100 pl-5 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center shrink-0">
-                      {user.nombre.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className="truncate">{user.nombre}</span>
-                  </td>
-                  <td className="p-3 text-slate-500 dark:text-slate-400 font-mono font-medium">{user.username}</td>
-                  <td className="p-3">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
-                      user.role === 'ADMIN' 
-                        ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
-                        : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                    }`}>
-                      {user.role === 'ADMIN' ? (
-                        <>
-                          <ShieldCheck className="h-3 w-3" /> Admin
-                        </>
-                      ) : (
-                        <>
-                          <User className="h-3 w-3" /> Auxiliar
-                        </>
-                      )}
-                    </span>
-                  </td>
-                  <td className="p-3 space-y-1 max-w-[200px]">
-                    {user.sucursales.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {user.sucursales.map(s => (
-                          <span key={s.id} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-0.5" title="Sucursal asignada">
-                            <Building2 className="h-2.5 w-2.5 shrink-0" />
-                            {s.nombre}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    {user.bodegas.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {user.bodegas.map(b => (
-                          <span key={b.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-900/60 flex items-center gap-0.5" title={`Bodega asignada de sucursal: ${b.sucursal?.nombre || ''}`}>
-                            <Warehouse className="h-2.5 w-2.5 shrink-0" />
-                            {b.nombre}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      user.sucursales.length === 0 && (
-                        <span className="text-[10px] text-slate-400 italic">Acceso Total (Sin filtrar)</span>
-                      )
-                    )}
-                  </td>
-                  <td className="p-3 text-slate-400 font-medium text-[11px]">
-                    {new Date(user.createdAt).toLocaleDateString('es-CL')}
-                  </td>
-                  <td className="p-3 text-right pr-5 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => startEdit(user)}
-                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                          editingUser?.id === user.id 
-                            ? 'bg-teal-500 border-teal-500 text-white' 
-                            : 'border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-500 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
-                        }`}
-                        title="Editar usuario"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id, user.nombre)}
-                        className="p-1.5 rounded-lg border border-slate-200 hover:border-red-500 dark:border-slate-700 dark:hover:border-red-500 hover:bg-red-50/50 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer"
-                        title="Eliminar usuario"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs font-medium">
+                    No se encontraron usuarios bajo este filtro.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ${editingUser?.id === user.id ? 'bg-teal-500/5 dark:bg-teal-500/10' : ''}`}>
+                    <td className="p-3 font-bold text-slate-800 dark:text-slate-100 pl-5 flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center shrink-0">
+                        {user.nombre.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="truncate">{user.nombre}</span>
+                    </td>
+                    <td className="p-3 text-slate-500 dark:text-slate-400 font-mono font-medium">{user.username}</td>
+                    <td className="p-3">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
+                        user.role === 'ADMIN' 
+                          ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
+                          : user.role === 'CONSUMIDOR'
+                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                            : user.role === 'CONTABLE'
+                              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                      }`}>
+                        {user.role === 'ADMIN' && (
+                          <>
+                            <ShieldCheck className="h-3 w-3" /> Admin
+                          </>
+                        )}
+                        {user.role === 'CONSUMIDOR' && (
+                          <>
+                            <ShoppingCart className="h-3 w-3" /> Consumidor
+                          </>
+                        )}
+                        {user.role === 'CONTABLE' && (
+                          <>
+                            <Building2 className="h-3 w-3" /> Contable
+                          </>
+                        )}
+                        {user.role !== 'ADMIN' && user.role !== 'CONSUMIDOR' && user.role !== 'CONTABLE' && (
+                          <>
+                            <User className="h-3 w-3" /> Bodeguero
+                          </>
+                        )}
+                      </span>
+                    </td>
+                    <td className="p-3 space-y-1 max-w-[200px]">
+                      {user.sucursales.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.sucursales.map(s => (
+                            <span key={s.id} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-0.5" title="Sucursal asignada">
+                              <Building2 className="h-2.5 w-2.5 shrink-0" />
+                              {s.nombre}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {user.bodegas.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.bodegas.map(b => (
+                            <span key={b.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-900/60 flex items-center gap-0.5" title={`Bodega asignada de sucursal: ${b.sucursal?.nombre || ''}`}>
+                              <Warehouse className="h-2.5 w-2.5 shrink-0" />
+                              {b.nombre}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        user.sucursales.length === 0 && (
+                          <span className="text-[10px] text-slate-400 italic">
+                            {user.role === 'CONSUMIDOR' ? 'Portal de Solicitudes' : 'Acceso Total'}
+                          </span>
+                        )
+                      )}
+                    </td>
+                    <td className="p-3 text-slate-400 font-medium text-[11px]">
+                      {new Date(user.createdAt).toLocaleDateString('es-CL')}
+                    </td>
+                    <td className="p-3 text-right pr-5 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => startEdit(user)}
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                            editingUser?.id === user.id 
+                              ? 'bg-teal-500 border-teal-500 text-white' 
+                              : 'border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-500 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
+                          }`}
+                          title="Editar usuario"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id, user.nombre)}
+                          className="p-1.5 rounded-lg border border-slate-200 hover:border-red-500 dark:border-slate-700 dark:hover:border-red-500 hover:bg-red-50/50 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

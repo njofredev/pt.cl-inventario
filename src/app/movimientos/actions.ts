@@ -11,6 +11,8 @@ export async function createTransaction(formData: FormData) {
   const esEntrada = formData.get('esEntrada') === 'true';
   const bodegaId = (formData.get('bodegaId') as string) || null;
   const ubicacionId = (formData.get('ubicacionId') as string) || null;
+  const recibidoPor = (formData.get('recibidoPor') as string)?.trim() || null;
+  const destinoNombre = (formData.get('destinoNombre') as string)?.trim() || null;
 
   if (!productoId || isNaN(cantidad) || cantidad <= 0) {
     return { error: "Datos de formulario inválidos." };
@@ -30,6 +32,8 @@ export async function createTransaction(formData: FormData) {
       return { error: "No tienes permisos para registrar movimientos en la bodega seleccionada." };
     }
 
+    let correlativoGenerado = '';
+
     await prisma.$transaction(async (tx) => {
       // 1. Fetch Product
       const product = await tx.product.findUnique({
@@ -42,7 +46,7 @@ export async function createTransaction(formData: FormData) {
       }
 
       // Check default movement type
-      let defaultTipoMovName = esEntrada ? "Ajuste de Entrada" : "Ajuste de Salida";
+      let defaultTipoMovName = esEntrada ? "Ajuste de Entrada" : "Consumo Clínico Directo";
       let tipoMov = await tx.tipoMovimiento.findFirst({
         where: { nombre: defaultTipoMovName }
       });
@@ -94,7 +98,26 @@ export async function createTransaction(formData: FormData) {
         }
       }
 
-      // Create movement record
+      // Generate Clean Correlative Identifier
+      const prefix = esEntrada ? 'ING' : 'SAL';
+      const year = new Date().getFullYear();
+      const countThisYear = await tx.movimiento.count({
+        where: {
+          tipoMovimiento: { esEntrada },
+          fecha: {
+            gte: new Date(`${year}-01-01T00:00:00.000Z`),
+          }
+        }
+      });
+      correlativoGenerado = `${prefix}-${year}-${(countThisYear + 1).toString().padStart(5, '0')}`;
+
+      // Build receptor or destination string
+      let receptorFinal = recibidoPor;
+      if (destinoNombre) {
+        receptorFinal = recibidoPor ? `${recibidoPor} (${destinoNombre})` : destinoNombre;
+      }
+
+      // Create movement record with Correlative
       await tx.movimiento.create({
         data: {
           productoId,
@@ -103,6 +126,9 @@ export async function createTransaction(formData: FormData) {
           bodegaId,
           ubicacionId: finalUbicacionId || null,
           usuarioId: user.userId,
+          recibidoPor: receptorFinal,
+          documentoTipo: esEntrada ? 'INGRESO_DIRECTO' : 'SALIDA_DIRECTA',
+          documentoNumero: correlativoGenerado,
           pppCalculado: product.ppp,
           valorUnitario: 0.0
         }
@@ -141,7 +167,7 @@ export async function createTransaction(formData: FormData) {
     revalidatePath('/');
     revalidatePath('/productos');
     revalidatePath('/movimientos');
-    return { success: true };
+    return { success: true, correlativo: correlativoGenerado };
   } catch (error: any) {
     return { error: error.message || "Error al registrar movimiento." };
   }
