@@ -73,6 +73,24 @@ export default async function MovimientosPage(props: PageProps) {
     ],
   });
 
+  // 4b. Fetch Consumidores registrados para asignación en Salidas
+  const consumidores = await prisma.user.findMany({
+    where: {
+      role: "CONSUMIDOR",
+    },
+    select: {
+      id: true,
+      username: true,
+      nombre: true,
+      rut: true,
+      areaTrabajo: true,
+      cargo: true,
+    },
+    orderBy: {
+      nombre: "asc",
+    },
+  });
+
   // 5. Fetch recent movements from DB (filtered by permissions)
   const movementsWhere = permissions?.isFiltered
     ? { bodegaId: { in: permissions.bodegasIds } }
@@ -166,6 +184,7 @@ export default async function MovimientosPage(props: PageProps) {
           bodegas={JSON.parse(JSON.stringify(bodegas))}
           proveedores={JSON.parse(JSON.stringify(proveedores))}
           destinos={JSON.parse(JSON.stringify(destinos))}
+          consumidores={JSON.parse(JSON.stringify(consumidores))}
           movements={JSON.parse(JSON.stringify(movements))}
           documentosPendientes={JSON.parse(JSON.stringify(documentosPendientes))}
           defaultTab={defaultTab}

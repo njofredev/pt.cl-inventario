@@ -22,48 +22,58 @@ interface ProductFormProps {
 }
 
 const CLASIFICACIONES = [
-  { id: "CLI", nombre: "INSUMOS CLINICOS (CLI)", cuentaCodigo: "1.1.05.03" },
-  { id: "EPP", nombre: "ELEMENTOS DE PROTECCION PERSONAL (EPP)", cuentaCodigo: "1.1.05.03" },
-  { id: "ASE", nombre: "ASEO Y DESINFECCION (ASE)", cuentaCodigo: "1.1.05.01" },
-  { id: "EST", nombre: "ESTERILIZACION (EST)", cuentaCodigo: "1.1.05.03" },
-  { id: "ADM", nombre: "ADMINISTRACION Y OFICINA (ADM)", cuentaCodigo: "1.1.05.02" }
+  { id: "CLD", nombre: "INSUMOS CLÍNICOS DENTALES (CLD)", dbName: "INSUMOS CLÍNICOS DENTALES", cuentaCodigo: "1.1.05.03" },
+  { id: "CLT", nombre: "INSUMOS CLÍNICOS TRANSVERSALES (CLT)", dbName: "INSUMOS CLÍNICOS TRANSVERSALES", cuentaCodigo: "1.1.05.03" },
+  { id: "ADM", nombre: "INSUMOS DE ADMINISTRACIÓN Y OFICINA (ADM)", dbName: "INSUMOS DE ADMINISTRACIÓN Y OFICINA", cuentaCodigo: "1.1.05.02" },
+  { id: "ASE", nombre: "INSUMOS DE ASEO Y DESINFECCIÓN (ASE)", dbName: "INSUMOS DE ASEO Y DESINFECCIÓN", cuentaCodigo: "1.1.05.01" },
+  { id: "EPP", nombre: "ELEMENTOS DE PROTECCIÓN PERSONAL (EPP)", dbName: "ELEMENTOS DE PROTECCIÓN PERSONAL", cuentaCodigo: "1.1.05.03" },
+  { id: "FAR", nombre: "INSUMOS DE FARMACIA Y MEDICAMENTOS (FAR)", dbName: "INSUMOS DE FARMACIA Y MEDICAMENTOS", cuentaCodigo: "1.1.05.03" },
+  { id: "EST", nombre: "INSUMOS DE ESTERILIZACIÓN (EST)", dbName: "INSUMOS DE ESTERILIZACIÓN", cuentaCodigo: "1.1.05.03" }
 ];
 
-const TIPOS: Record<string, { id: string; nombre: string }[]> = {
-  CLI: [
-    { id: "FR", nombre: "Fresas y Piedras (FR)" },
-    { id: "MC", nombre: "Materiales Restauradores y Cementos (MC)" },
-    { id: "MI", nombre: "Materiales de Impresión (MI)" },
-    { id: "LE", nombre: "Limas y Ensanchadores (LE)" },
-    { id: "CP", nombre: "Conos y Puntas (CP)" },
-    { id: "AJ", nombre: "Agujas, Jeringas y Anestesia (AJ)" },
-    { id: "LS", nombre: "Líquidos y Soluciones Clínicas (LS)" },
-    { id: "AM", nombre: "Aislación y Matrices (AM)" },
-    { id: "AD", nombre: "Algodón y Desechables Clínicos (AD)" },
-    { id: "MS", nombre: "Misceláneos Clínicos (MS)" }
+const TIPOS: Record<string, { id: string; nombre: string; dbName: string }[]> = {
+  CLD: [
+    { id: "OR", nombre: "Ortodoncia y Periodoncia (OR)", dbName: "Ortodoncia y Periodoncia" },
+    { id: "FR", nombre: "Fresas y Piedras (FR)", dbName: "Fresas y Piedras" },
+    { id: "MI", nombre: "Materiales de Impresión (MI)", dbName: "Materiales de Impresión" },
+    { id: "MC", nombre: "Materiales Restauradores (MC)", dbName: "Materiales Restauradores" },
+    { id: "IO", nombre: "Instrumental Odontológico (IO)", dbName: "Instrumental Odontológico" },
+    { id: "AM", nombre: "Aislación y Matrices (AM)", dbName: "Aislación y Matrices" },
+    { id: "EN", nombre: "Material de Endodoncia (EN)", dbName: "Material de Endodoncia" },
+    { id: "LD", nombre: "Soluciones y Químicos Dentales (LD)", dbName: "Soluciones y Químicos Dentales" }
   ],
-  EPP: [
-    { id: "GU", nombre: "Guantes (GU)" },
-    { id: "MR", nombre: "Mascarillas y Respiradores (MR)" },
-    { id: "RD", nombre: "Ropa Desechable y de Protección (RD)" },
-    { id: "PF", nombre: "Protección Ocular y Facial (PF)" }
-  ],
-  ASE: [
-    { id: "DQ", nombre: "Detergentes y Químicos (DQ)" },
-    { id: "AL", nombre: "Artículos de Limpieza Físicos (AL)" },
-    { id: "PA", nombre: "Papelería de Aseo (PA)" },
-    { id: "IM", nombre: "Insumos de Manejo de Desechos (IM)" }
-  ],
-  EST: [
-    { id: "EM", nombre: "Empaques de Esterilización (EM)" },
-    { id: "IN", nombre: "Controles e Indicadores (IN)" }
+  CLT: [
+    { id: "MC", nombre: "Misceláneos Clínicos General (MC)", dbName: "Misceláneos Clínicos General" },
+    { id: "CH", nombre: "Curación, Heridas y Fisioterapia (CH)", dbName: "Curación, Heridas y Fisioterapia" },
+    { id: "VP", nombre: "Vías, Punción e Inyección (VP)", dbName: "Vías, Punción e Inyección" },
+    { id: "IQ", nombre: "Instrumental y Diagnóstico Clínico (IQ)", dbName: "Instrumental y Diagnóstico Clínico" }
   ],
   ADM: [
-    { id: "II", nombre: "Insumos de Impresión (II)" },
-    { id: "PO", nombre: "Papelería de Oficina (PO)" },
-    { id: "AE", nombre: "Artículos de Escritorio (AE)" },
-    { id: "HA", nombre: "Herramientas y Accesorios de Oficina (HA)" },
-    { id: "IG", nombre: "Insumos Electrónicos y Generales (IG)" }
+    { id: "AE", nombre: "Artículos de Escritorio (AE)", dbName: "Artículos de Escritorio" },
+    { id: "PO", nombre: "Papelería de Oficina (PO)", dbName: "Papelería de Oficina" },
+    { id: "IG", nombre: "Insumos Electrónicos y Generales (IG)", dbName: "Insumos Electrónicos y Generales" },
+    { id: "II", nombre: "Insumos de Impresión (II)", dbName: "Insumos de Impresión" },
+    { id: "HA", nombre: "Herramientas de Oficina (HA)", dbName: "Herramientas de Oficina" }
+  ],
+  ASE: [
+    { id: "DQ", nombre: "Detergentes y Químicos Desinfectantes (DQ)", dbName: "Detergentes y Químicos Desinfectantes" },
+    { id: "AL", nombre: "Material de Limpieza Física (AL)", dbName: "Material de Limpieza Física" },
+    { id: "IM", nombre: "Manejo de Desechos / REAS (IM)", dbName: "Manejo de Desechos" },
+    { id: "PA", nombre: "Papelería de Aseo (PA)", dbName: "Papelería de Aseo" }
+  ],
+  EPP: [
+    { id: "PF", nombre: "Protección Ocular y Facial (PF)", dbName: "Protección Ocular y Facial" },
+    { id: "GU", nombre: "Guantes de Procedimiento (GU)", dbName: "Guantes" },
+    { id: "MR", nombre: "Mascarillas y Respiradores (MR)", dbName: "Mascarillas y Respiradores" },
+    { id: "RD", nombre: "Ropa Desechable (RD)", dbName: "Ropa Desechable" }
+  ],
+  FAR: [
+    { id: "MD", nombre: "Medicamentos Generales e Inyectables (MD)", dbName: "Medicamentos Generales e Inyectables" },
+    { id: "AN", nombre: "Anestesia Local y Carpul (AN)", dbName: "Anestesia Local y Carpul" }
+  ],
+  EST: [
+    { id: "EM", nombre: "Empaques y Mangas (EM)", dbName: "Empaques y Mangas" },
+    { id: "IN", nombre: "Controles e Indicadores Biológicos/Químicos (IN)", dbName: "Controles e Indicadores Biológicos/Químicos" }
   ]
 };
 
@@ -162,6 +172,16 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
     formData.append("nombre", nombre);
     formData.append("unidad", unidad);
     formData.append("cuentaContableId", cuentaContableId);
+
+    // Clasificación y Tipo de Producto Oficiales
+    const selectedClasifObj = CLASIFICACIONES.find(c => c.id === clasificacion);
+    const selectedTipoObj = (TIPOS[clasificacion] || []).find(t => t.id === tipo);
+    if (selectedClasifObj) {
+      formData.append("clasificacion", selectedClasifObj.dbName);
+    }
+    if (selectedTipoObj) {
+      formData.append("tipoProducto", selectedTipoObj.dbName);
+    }
 
     // Unidades
     formData.append("unidadCompra", unidadCompra);

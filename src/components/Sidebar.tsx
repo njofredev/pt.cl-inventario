@@ -30,7 +30,9 @@ import {
   MapPin,
   Search,
   Sliders,
-  FolderTree
+  FolderTree,
+  Bell,
+  Check
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -53,6 +55,76 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
 
   // Search Modal State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Solicitudes Pendientes Count & Resumen (Notificación en vivo)
+  const [pendientesCount, setPendientesCount] = useState<number>(0);
+  const [pendingItemsList, setPendingItemsList] = useState<any[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const [notifCoords, setNotifCoords] = useState<{ top: number; left: number }>({ top: 60, left: 240 });
+  const notifRef = useRef<HTMLDivElement>(null);
+  const notifPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPendientes = async () => {
+      try {
+        const res = await fetch("/api/solicitudes/pendientes");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            // Para ADMIN/OPERADOR: pendientesCount de bodega
+            // Para CONSUMIDOR: solicitudes despachadas pendientes de recepcionar
+            if (user.role === 'CONSUMIDOR') {
+              setPendientesCount(data.userPorRecepcionarCount || 0);
+              setPendingItemsList(data.userPorRecepcionarList || []);
+            } else {
+              setPendientesCount(data.pendientesCount || 0);
+              setPendingItemsList(data.pendingSolicitudes || []);
+            }
+          }
+        }
+      } catch (e) {
+        // Silently handle error
+      }
+    };
+
+    fetchPendientes();
+    // Actualizar periódicamente cada 15 segundos
+    const interval = setInterval(fetchPendientes, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user.role]);
+
+  // Toggle notifications popover and calculate position
+  const toggleNotifPopover = () => {
+    if (!isNotifOpen && notifRef.current) {
+      const rect = notifRef.current.getBoundingClientRect();
+      setNotifCoords({
+        top: rect.bottom + 8,
+        left: rect.left
+      });
+    }
+    setIsNotifOpen(prev => !prev);
+  };
+
+  // Click outside to close notifications popover
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        notifRef.current && !notifRef.current.contains(target) &&
+        notifPopoverRef.current && !notifPopoverRef.current.contains(target)
+      ) {
+        setIsNotifOpen(false);
+      }
+    };
+    if (isNotifOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isNotifOpen]);
 
   // Global Keyboard Shortcut: Alt + J
   useEffect(() => {
@@ -254,7 +326,15 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
     }
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setNovedadesTop(rect.top);
+      const popoverHeight = 240; // Altura estimada del popover de novedades
+      const windowHeight = window.innerHeight;
+      
+      // Si el popover se saldría por abajo de la pantalla, alinearlo hacia arriba
+      let calculatedTop = rect.top;
+      if (calculatedTop + popoverHeight > windowHeight - 16) {
+        calculatedTop = Math.max(16, windowHeight - popoverHeight - 16);
+      }
+      setNovedadesTop(calculatedTop);
     }
     setNovedadesHovered(true);
   };
@@ -283,21 +363,45 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       {/* Scrollable Upper Area */}
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar px-3 pt-4 pb-2">
         
-        {/* Header / Brand */}
-        <div className="flex items-center gap-3 px-2 pb-3 mb-1">
-          <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-1 shrink-0 shadow-xs">
-            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+        {/* Header / Brand with Notification Bell */}
+        <div className="flex items-center justify-between px-2 pb-3 mb-1">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full bg-teal-50 border border-teal-100 dark:bg-[#0d1c3a] dark:border-[#1d3058] flex items-center justify-center p-1 shrink-0 shadow-xs">
+              <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-black text-sm tracking-tight text-slate-800 dark:text-slate-100 truncate">
+                Policlínico Tabancura
+              </h1>
+              <p className="text-[10px] font-black tracking-wider text-teal-600 dark:text-[#00e699] uppercase leading-tight">
+                {user.role === 'CONSUMIDOR' ? 'SOLICITUDES' : 'CONTROL INVENTARIO'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="font-black text-sm tracking-tight text-slate-800 dark:text-slate-100">
-              Policlínico Tabancura
-            </h1>
-            <p className="text-[10px] font-black tracking-wider text-teal-600 dark:text-[#00e699] uppercase leading-tight">
-              {user.role === 'CONSUMIDOR' ? 'SOLICITUDES' : 'CONTROL INVENTARIO'}
-            </p>
+
+          {/* Botón Campana Notificación */}
+          <div className="relative shrink-0" ref={notifRef}>
+            <button
+              type="button"
+              onClick={toggleNotifPopover}
+              className={`relative p-2 rounded-xl transition-all cursor-pointer group ${
+                isNotifOpen 
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/20" 
+                  : "text-slate-400 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#132247]"
+              }`}
+              title="Notificaciones de solicitudes"
+            >
+              <Bell className={`h-4.5 w-4.5 transition-transform duration-200 group-hover:scale-110 ${
+                pendientesCount > 0 ? "text-amber-500 animate-pulse" : ""
+              }`} />
+              {pendientesCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-md shadow-rose-500/40 animate-bounce ring-2 ring-white dark:ring-[#070e1e]">
+                  {pendientesCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
-
         {/* Quick Search Trigger (Alt + J) */}
         <div className="px-1 mb-3">
           <button
@@ -398,6 +502,20 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                                     {item.label}
                                   </span>
                                 </div>
+
+                                {item.href === "/solicitudes" && pendientesCount > 0 && (
+                                  <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
+                                    <Bell className="h-2.5 w-2.5 animate-bounce" />
+                                    <span>{pendientesCount}</span>
+                                  </span>
+                                )}
+
+                                {item.href === "/solicitar?tab=HISTORIAL" && pendientesCount > 0 && (
+                                  <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
+                                    <Bell className="h-2.5 w-2.5 animate-bounce" />
+                                    <span>{pendientesCount} por recibir</span>
+                                  </span>
+                                )}
 
                                 {item.badge && !isActive && (
                                   <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-105 ${item.badgeColor}`}>
@@ -518,8 +636,8 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
           onMouseLeave={handleMouseLeavePopover}
           className="fixed left-[288px] z-[99999] animate-in fade-in slide-in-from-left-2 duration-150"
         >
-          <div className="bg-white/95 dark:bg-[#0c1836]/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-700/90 rounded-2xl p-2.5 shadow-2xl min-w-[250px] space-y-1 border-l-4 border-l-teal-500">
-            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between mb-1">
+          <div className="bg-white/95 dark:bg-[#0c1836]/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-700/90 rounded-2xl p-2.5 shadow-2xl min-w-[255px] max-h-[calc(100vh-2rem)] overflow-y-auto space-y-1 border-l-4 border-l-teal-500 hide-scrollbar">
+            <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between mb-1 sticky top-0 bg-white/90 dark:bg-[#0c1836]/90 backdrop-blur-sm z-10">
               <span className="text-[10px] font-black tracking-wider text-slate-400 uppercase">
                 Apps & Módulos 2026
               </span>
@@ -547,6 +665,147 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* NOVEDADES EXPLANATORY TOOLTIP A LA DERECHA */}
+      {novedadesHovered && hoveredNovedad && (
+        <div 
+          style={{ top: `${novedadesTop}px` }}
+          onMouseEnter={handleMouseEnterPopover}
+          onMouseLeave={handleMouseLeavePopover}
+          className="fixed left-[550px] z-[999999] animate-in fade-in slide-in-from-left-2 duration-150 w-[300px] pointer-events-auto"
+        >
+          <div className="bg-white/95 dark:bg-[#081229]/95 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 shadow-2xl text-xs leading-relaxed font-semibold backdrop-blur-md space-y-2.5 border-l-4 border-l-teal-500">
+            <div className="flex items-center justify-between">
+              <span className="text-[9.5px] font-black text-teal-600 dark:text-[#00e699] uppercase tracking-wider">
+                FUTURO MÓDULO 2026
+              </span>
+              <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider ${hoveredNovedad.statusColor || 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                {hoveredNovedad.statusBadge || 'Pronto'}
+              </span>
+            </div>
+            <div>
+              <h4 className="font-black text-xs text-slate-900 dark:text-white leading-tight">
+                {hoveredNovedad.label}
+              </h4>
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed font-medium">
+              {hoveredNovedad.description}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* FIXED POSITION NOTIFICATIONS POPOVER (HIGH Z-INDEX, IMMUNE TO SCROLL CLIPPING) */}
+      {isNotifOpen && (
+        <div 
+          ref={notifPopoverRef}
+          style={{ 
+            top: `${notifCoords.top}px`, 
+            left: `${notifCoords.left}px` 
+          }}
+          className="fixed z-[99999] w-80 sm:w-92 bg-white dark:bg-[#0b1329] border border-slate-200/90 dark:border-[#1d2d52] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 text-left select-text"
+        >
+          {/* Encabezado del Popover */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-900/60">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Bell className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-800 dark:text-slate-100">
+                  {user.role === 'CONSUMIDOR' ? 'Pedidos por Recepcionar' : 'Solicitudes Pendientes'}
+                </h4>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {pendientesCount > 0 
+                    ? `${pendientesCount} ${pendientesCount === 1 ? 'requerimiento activo' : 'requerimientos activos'}`
+                    : "Todo al día sin pendientes"}
+                </p>
+              </div>
+            </div>
+            {pendientesCount > 0 && (
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                {pendientesCount} PENDIENTE
+              </span>
+            )}
+          </div>
+
+          {/* Lista / Resumen de Notificaciones */}
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 hide-scrollbar">
+            {pendingItemsList.length > 0 ? (
+              pendingItemsList.map((sol: any) => {
+                const itemCount = sol.items?.length || 0;
+                const itemsPreview = sol.items?.slice(0, 2).map((it: any) => 
+                  `${it.cantidad || it.cantidadEnviada || 1}x ${it.product?.nombre || 'Insumo'}`
+                ).join(', ');
+
+                const formattedDate = sol.fecha 
+                  ? new Date(sol.fecha).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  : '';
+
+                return (
+                  <div key={sol.id} className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                          {sol.nombre}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span className="font-bold text-teal-600 dark:text-teal-400 truncate">
+                            {sol.areaTrabajo || sol.centroCosto?.nombre || 'Clínica'}
+                          </span>
+                          {formattedDate && (
+                            <>
+                              <span>•</span>
+                              <span>{formattedDate}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-[#227262] dark:text-teal-300 shrink-0">
+                        {itemCount} {itemCount === 1 ? 'ítem' : 'ítems'}
+                      </span>
+                    </div>
+
+                    {itemsPreview && (
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-2 bg-slate-100/80 dark:bg-slate-800/60 px-2.5 py-1.5 rounded-xl truncate font-medium">
+                        📦 {itemsPreview}{itemCount > 2 ? ` y ${itemCount - 2} más...` : ''}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-6 text-center space-y-2">
+                <div className="w-9 h-9 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center">
+                  <Check className="h-4 w-4" />
+                </div>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  ¡Todo al día!
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  No hay solicitudes pendientes que requieran gestión en este momento.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Pie con botón de acceso directo */}
+          <div className="p-3 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800/80">
+            <Link
+              href={user.role === 'CONSUMIDOR' ? "/solicitar?tab=HISTORIAL" : "/solicitudes"}
+              onClick={() => setIsNotifOpen(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-black text-white bg-[#227262] hover:bg-[#1a5a4d] rounded-xl shadow-md transition-all text-center"
+            >
+              <span>
+                {user.role === 'CONSUMIDOR' 
+                  ? 'Ver Mis Solicitudes' 
+                  : 'Abrir Gestión de Solicitudes'}
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       )}

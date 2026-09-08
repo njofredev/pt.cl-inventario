@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { 
-  Package, 
-  AlertTriangle, 
-  Users, 
-  Building, 
-  Plus, 
+import {
+  Package,
+  AlertTriangle,
+  Users,
+  Building,
+  Plus,
   ArrowRight,
   TrendingUp,
   FileText,
@@ -89,49 +89,64 @@ export default async function DashboardPage() {
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">{totalProducts}</h3>
-            <p className="text-[10px] font-extrabold text-teal-600 dark:text-teal-400 mt-1.5">Materiales registrados</p>
+            <p className="text-[10px] font-extrabold text-teal-600 dark:text-teal-400 mt-1.5">Insumos registrados</p>
           </div>
         </div>
 
         {/* Card 2: Productos Críticos */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-red-400/50 hover:shadow-md transition-all duration-200">
+        <div className={`rounded-2xl p-5 shadow-sm flex flex-col justify-between transition-all duration-200 ${lowStockCount > 0
+            ? "bg-red-50/70 dark:bg-red-950/30 border-2 border-red-300 dark:border-red-800/80 hover:border-red-500 hover:shadow-md hover:shadow-red-500/10"
+            : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-red-400/50 hover:shadow-md"
+          }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Stock Crítico</span>
-            <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+            <span className={`text-[10px] font-extrabold uppercase tracking-wider ${lowStockCount > 0 ? "text-red-700 dark:text-red-400" : "text-slate-400"
+              }`}>
+              Stock Crítico
+            </span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${lowStockCount > 0
+                ? "bg-red-500 text-white shadow-xs animate-pulse"
+                : "bg-red-500/10 border border-red-500/20 text-red-500"
+              }`}>
               <AlertTriangle className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">{lowStockCount}</h3>
-            <p className="text-[10px] font-extrabold text-red-500 mt-1.5">{lowStockCount} requieren reposición</p>
+            <h3 className={`text-2xl font-black leading-none ${lowStockCount > 0 ? "text-red-700 dark:text-red-200" : "text-slate-800 dark:text-slate-100"
+              }`}>
+              {lowStockCount}
+            </h3>
+            <p className="text-[10px] font-extrabold text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
+              <span>⚠️</span>
+              <span>{lowStockCount} requieren reposición</span>
+            </p>
           </div>
         </div>
 
         {/* Card 3: Proveedores */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-blue-400/50 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Convenios</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Proveedores Registrados</span>
             <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
               <Users className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">{totalSuppliers}</h3>
-            <p className="text-[10px] font-extrabold text-blue-500 mt-1.5">Proveedores activos</p>
+            <p className="text-[10px] font-extrabold text-blue-500 mt-1.5">Proveedores registrados</p>
           </div>
         </div>
 
         {/* Card 4: Centro de Costos */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col justify-between hover:border-amber-400/50 hover:shadow-md transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Establecimientos</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Centros de Costos Registrados</span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600">
               <Building className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-3">
             <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">{totalLocations}</h3>
-            <p className="text-[10px] font-extrabold text-amber-600 mt-1.5">Centros de costo destino</p>
+            <p className="text-[10px] font-extrabold text-amber-600 mt-1.5">Centros de costos registrados</p>
           </div>
         </div>
       </div>
@@ -146,14 +161,14 @@ export default async function DashboardPage() {
                 <FileText className="h-5 w-5 text-teal-600" />
                 <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Movimientos Recientes</h2>
               </div>
-              <Link 
-                href="/movimientos?tab=HISTORIAL" 
+              <Link
+                href="/movimientos?tab=HISTORIAL"
                 className="px-3.5 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-teal-700 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-teal-400 rounded-xl transition-all shadow-2xs"
               >
                 Ver Bitácora Completa →
               </Link>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -185,17 +200,15 @@ export default async function DashboardPage() {
                           </span>
                         </td>
                         <td className="py-3">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${
-                            mov.tipoMovimiento.esEntrada 
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-extrabold border ${mov.tipoMovimiento.esEntrada
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                               : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-                          }`}>
+                            }`}>
                             {mov.tipoMovimiento.nombre}
                           </span>
                         </td>
-                        <td className={`py-3 text-right font-black text-sm ${
-                          mov.tipoMovimiento.esEntrada ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'
-                        }`}>
+                        <td className={`py-3 text-right font-black text-sm ${mov.tipoMovimiento.esEntrada ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'
+                          }`}>
                           {mov.tipoMovimiento.esEntrada ? '+' : '-'}{mov.cantidad}
                         </td>
                         <td className="py-3 text-right text-slate-500 dark:text-slate-400 pr-3 font-medium text-[11px]">
@@ -217,10 +230,10 @@ export default async function DashboardPage() {
               <h2 className="text-base font-extrabold text-slate-800 dark:text-slate-100">Accesos Rápidos</h2>
               <p className="text-xs text-slate-400 mt-0.5 font-medium">Operaciones preferentes del portal de insumos</p>
             </div>
-            
+
             <div className="space-y-3">
               {/* Option 1 */}
-              <Link 
+              <Link
                 href="/movimientos"
                 className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-teal-50/40 dark:hover:bg-slate-800 hover:border-teal-500 transition-all shadow-xs group active-scale-down"
               >
@@ -237,7 +250,7 @@ export default async function DashboardPage() {
               </Link>
 
               {/* Option 2 */}
-              <Link 
+              <Link
                 href="/solicitudes"
                 className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-blue-50/40 dark:hover:bg-slate-800 hover:border-blue-500 transition-all shadow-xs group active-scale-down"
               >
@@ -254,7 +267,7 @@ export default async function DashboardPage() {
               </Link>
 
               {/* Option 3 */}
-              <Link 
+              <Link
                 href="/productos"
                 className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-purple-50/40 dark:hover:bg-slate-800 hover:border-purple-500 transition-all shadow-xs group active-scale-down"
               >

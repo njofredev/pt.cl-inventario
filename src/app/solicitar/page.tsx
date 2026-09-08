@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { verifyJWT } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import Link from "next/link";
-import { ClipboardList, ArrowLeft, LogOut, User } from "lucide-react";
+import { ClipboardList, ArrowLeft, LogOut, User, Bell } from "lucide-react";
 import ClientSolicitarForm from "./ClientSolicitarForm";
 
 export const revalidate = 0;
@@ -21,8 +21,28 @@ export default async function SolicitarPage(props: PageProps) {
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value;
   const user = session ? await verifyJWT(session) : null;
-  // Obtener Centros de Costo y Productos para el formulario
+  const dbUser = user?.userId 
+    ? await prisma.user.findUnique({
+        where: { id: user.userId },
+        select: {
+          id: true,
+          nombre: true,
+          username: true,
+          rut: true,
+          areaTrabajo: true,
+          cargo: true,
+          role: true
+        }
+      })
+    : null;
+
+  // Obtener Centros de Costo, Destinos (boxes / áreas registradas) y Productos para el formulario
   const centrosCosto = await prisma.centroCosto.findMany({
+    orderBy: { nombre: "asc" }
+  });
+
+  const destinos = await prisma.destino.findMany({
+    select: { id: true, nombre: true },
     orderBy: { nombre: "asc" }
   });
 
@@ -96,6 +116,7 @@ export default async function SolicitarPage(props: PageProps) {
     areaTrabajo: s.areaTrabajo,
     cargo: s.cargo,
     estado: s.estado,
+    observacionRespuesta: s.observacionRespuesta,
     centroCosto: {
       codigo: s.centroCosto.codigo,
       nombre: s.centroCosto.nombre,
@@ -104,6 +125,8 @@ export default async function SolicitarPage(props: PageProps) {
       id: it.id,
       productoId: it.productoId,
       cantidad: it.cantidad,
+      cantidadEnviada: it.cantidadEnviada,
+      cantidadRecepcionada: it.cantidadRecepcionada,
       product: {
         codigo: it.product.codigo,
         nombre: it.product.nombre,
@@ -147,6 +170,153 @@ export default async function SolicitarPage(props: PageProps) {
     return { success: true };
   }
 
+  // Action to confirm reception by consumer
+  async function recepcionarSolicitudAction(
+    solicitudId: string,
+    itemsRecepcionados: { id: string; cantidadRecepcionada: number }[]
+  ) {
+    'use server'
+    if (!solicitudId || !itemsRecepcionados || itemsRecepcionados.length === 0) {
+      throw new Error("Datos inválidos.");
+    }
+
+    const { recalcularPPPProducto } = await import("@/lib/kardex");
+    const { revalidatePath } = await import("next/cache");
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Obtener la solicitud con centro de costo e ítems
+      const currentSol = await tx.solicitud.findUnique({
+        where: { id: solicitudId },
+        include: {
+          centroCosto: true,
+          items: {
+            include: {
+              product: true
+            }
+          }
+        }
+      });
+
+      if (!currentSol) {
+        throw new Error("Solicitud no encontrada.");
+      }
+
+      // 2. Buscar TipoMovimiento para ajuste de merma en caso de discrepancia
+      let tipoMovMerma = await tx.tipoMovimiento.findFirst({
+        where: { nombre: "Dada de Baja" }
+      });
+      if (!tipoMovMerma) {
+        tipoMovMerma = await tx.tipoMovimiento.findFirst({
+          where: { nombre: "Ajuste de Salida" }
+        });
+      }
+      if (!tipoMovMerma) {
+        tipoMovMerma = await tx.tipoMovimiento.findFirst({
+          where: { esEntrada: false }
+        });
+      }
+
+      const adminOrSystemUser = await tx.user.findFirst({
+        where: { role: "ADMIN" }
+      });
+
+      const year = new Date().getFullYear();
+      const productosModificados = new Set<string>();
+
+      // 3. Actualizar cantidades recepcionadas y registrar discrepancias
+      for (const itemRec of itemsRecepcionados) {
+        const cantRec = Math.max(0, itemRec.cantidadRecepcionada || 0);
+
+        await tx.solicitudItem.update({
+          where: { id: itemRec.id },
+          data: {
+            cantidadRecepcionada: cantRec
+          }
+        });
+
+        const itemDb = currentSol.items.find(it => it.id === itemRec.id);
+        if (itemDb) {
+          const enviada = itemDb.cantidadEnviada || 0;
+          // Si el consumidor recepcionó menos de lo que bodega envió (merma o daño en tránsito)
+          if (cantRec < enviada && tipoMovMerma) {
+            const diferenciaMerma = enviada - cantRec;
+
+            const countThisYear = await tx.movimiento.count({
+              where: {
+                tipoMovimiento: { esEntrada: false },
+                fecha: { gte: new Date(`${year}-01-01T00:00:00.000Z`) }
+              }
+            });
+            const correlativoMerma = `MERMA-${year}-${(countThisYear + 1).toString().padStart(5, '0')}`;
+
+            // Buscar último movimiento de salida de este producto para esta solicitud
+            const lastMov = await tx.movimiento.findFirst({
+              where: {
+                productoId: itemDb.productoId,
+                documentoTipo: "SOLICITUD"
+              },
+              orderBy: { createdAt: "desc" }
+            });
+
+            await tx.movimiento.create({
+              data: {
+                productoId: itemDb.productoId,
+                tipoMovimientoId: tipoMovMerma.id,
+                cantidad: diferenciaMerma,
+                bodegaId: lastMov?.bodegaId || null,
+                ubicacionId: lastMov?.ubicacionId || null,
+                centroCostoId: currentSol.centroCostoId,
+                usuarioId: adminOrSystemUser?.id || "system",
+                recibidoPor: `Discrepancia Recepción: ${currentSol.nombre} (Enviado: ${enviada}, Recibido: ${cantRec})`,
+                documentoTipo: "AJUSTE_RECEPCION",
+                documentoNumero: correlativoMerma,
+                pppCalculado: itemDb.product.ppp || 0,
+                valorUnitario: 0.0
+              }
+            });
+
+            productosModificados.add(itemDb.productoId);
+          }
+        }
+      }
+
+      // Recalcular PPP si hubo ajustes
+      for (const prodId of productosModificados) {
+        await recalcularPPPProducto(tx, prodId);
+      }
+
+      await tx.solicitud.update({
+        where: { id: solicitudId },
+        data: {
+          estado: "RECEPCIONADA"
+        }
+      });
+    });
+
+    revalidatePath("/solicitar");
+    revalidatePath("/solicitudes");
+    revalidatePath("/productos");
+    revalidatePath("/movimientos");
+
+    return { success: true };
+  }
+
+  // Notificaciones para el portal de solicitudes
+  const pendientesDespachoCount = (user?.role === "ADMIN" || user?.role === "OPERADOR")
+    ? await prisma.solicitud.count({ where: { estado: "PENDIENTE" } })
+    : 0;
+
+  const porRecepcionarCount = (user?.role === "CONSUMIDOR")
+    ? await prisma.solicitud.count({
+        where: {
+          nombre: user.nombre,
+          estado: "DESPACHADA"
+        }
+      })
+    : 0;
+
+  const totalNotif = user?.role === "CONSUMIDOR" ? porRecepcionarCount : pendientesDespachoCount;
+
   return (
     <div className="min-h-screen bg-clinical-bg py-4 px-3 sm:py-8 sm:px-6 lg:px-8 pb-28 sm:pb-8">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
@@ -167,7 +337,28 @@ export default async function SolicitarPage(props: PageProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Notificación Campana */}
+              {totalNotif > 0 && (
+                <Link
+                  href={user?.role === "CONSUMIDOR" ? "/solicitar?tab=HISTORIAL" : "/solicitudes"}
+                  className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-black shadow-xs hover:bg-amber-100 transition-all cursor-pointer"
+                  title={
+                    user?.role === "CONSUMIDOR"
+                      ? `Tienes ${totalNotif} solicitud(es) despachada(s) lista(s) para recepcionar`
+                      : `Hay ${totalNotif} solicitud(es) pendiente(s) por gestionar en bodega`
+                  }
+                >
+                  <Bell className="h-3.5 w-3.5 text-amber-500 animate-bounce" />
+                  <span className="inline-flex items-center justify-center bg-red-500 text-white rounded-full h-4 min-w-4 px-1 text-[10px] font-black">
+                    {totalNotif}
+                  </span>
+                  <span className="hidden sm:inline text-[11px] font-extrabold text-amber-800 dark:text-amber-200">
+                    {user?.role === "CONSUMIDOR" ? "Por recepcionar" : "Pendiente"}
+                  </span>
+                </Link>
+              )}
+
               {user ? (
                 <div className="flex items-center gap-1.5">
                   <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300">
@@ -199,11 +390,29 @@ export default async function SolicitarPage(props: PageProps) {
         {/* Form Container */}
         <ClientSolicitarForm 
           centrosCosto={centrosCosto} 
+          destinos={destinos}
           productos={productos} 
-          currentUser={user ? { nombre: user.nombre, username: user.username, role: user.role } : undefined}
+          currentUser={dbUser ? {
+            id: dbUser.id,
+            nombre: dbUser.nombre,
+            username: dbUser.username,
+            rut: dbUser.rut,
+            areaTrabajo: dbUser.areaTrabajo,
+            cargo: dbUser.cargo,
+            role: dbUser.role
+          } : (user ? {
+            id: user.userId,
+            nombre: user.nombre,
+            username: user.username,
+            rut: null,
+            areaTrabajo: null,
+            cargo: null,
+            role: user.role
+          } : undefined)}
           userSolicitudes={formattedUserSolicitudes}
           initialTab={initialTab}
           submitRequestAction={submitRequestAction} 
+          recepcionarSolicitudAction={recepcionarSolicitudAction}
         />
       </div>
     </div>

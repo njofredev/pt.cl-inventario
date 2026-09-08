@@ -12,6 +12,7 @@ interface Props {
   bodegas: any[];
   proveedores: any[];
   destinos?: any[];
+  consumidores?: any[];
   movements: any[];
   documentosPendientes: any[];
   defaultTab?: string;
@@ -22,6 +23,7 @@ export default function MovimientosClientContainer({
   bodegas,
   proveedores,
   destinos = [],
+  consumidores = [],
   movements,
   documentosPendientes,
   defaultTab = 'COMPRAS',
@@ -281,6 +283,7 @@ export default function MovimientosClientContainer({
                 products={products}
                 bodegas={bodegas}
                 destinos={destinos}
+                consumidores={consumidores}
                 defaultTipo="EGRESO"
                 forceEsEntrada={false}
               />

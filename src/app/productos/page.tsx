@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import Link from 'next/link';
+import { Printer } from 'lucide-react';
 import ProductForm from "./ProductForm";
 import ClientProductsList from "./ClientProductsList";
 
@@ -71,13 +73,25 @@ export default async function ProductosPage(props: PageProps) {
   return (
     <div className="space-y-5 w-full">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-          Administración de Productos & Catálogo DB
-        </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-          Haz clic en cualquier producto para inspeccionar sus registros internos en la Base de Datos, historial y desglose físico por ubicación.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+            Administración de Productos & Catálogo DB
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+            Haz clic en cualquier producto para inspeccionar sus registros internos en la Base de Datos, historial y desglose físico por ubicación.
+          </p>
+        </div>
+
+        <Link
+          href="/productos/resumen-pdf"
+          target="_blank"
+          className="inline-flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition shadow-2xs self-start sm:self-auto shrink-0 cursor-pointer"
+          title="Ver resumen oficial de categorías y tipos listo para imprimir en PDF"
+        >
+          <Printer className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+          <span>Imprimir Resumen Categorías (PDF)</span>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">

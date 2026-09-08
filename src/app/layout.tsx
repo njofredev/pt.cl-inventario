@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LayoutDashboard, Package, Users, ArrowLeftRight, ShieldAlert, ClipboardList, LogOut } from "lucide-react";
 import { cookies } from "next/headers";
 import { verifyJWT } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { logoutAction } from "./login/actions";
 import { Suspense } from "react";
 import Sidebar from "@/components/Sidebar";
@@ -41,6 +42,11 @@ export default async function RootLayout({
     );
   }
 
+  // Consultar solicitudes pendientes para el indicador móvil
+  const pendientesCount = (user.role === 'ADMIN' || user.role === 'OPERADOR')
+    ? await prisma.solicitud.count({ where: { estado: "PENDIENTE" } })
+    : 0;
+
   return (
     <html lang="es" className="h-full">
       <body className="h-full bg-[var(--background)] text-foreground transition-colors duration-300">
@@ -53,10 +59,10 @@ export default async function RootLayout({
           {/* Main content wrapper */}
           <div className="flex flex-col flex-1 md:pl-[295px]">
             {/* Mobile Header */}
-            <header className="md:hidden flex items-center justify-between h-16 px-6 bg-white border-b border-slate-200 shadow-sm">
+            <header className="md:hidden flex items-center justify-between h-16 px-4 sm:px-6 bg-white border-b border-slate-200 shadow-sm">
               <div className="flex items-center gap-2">
                 <img src="/logo.svg" alt="Tabancura Logo" className="h-8 w-auto text-[#227262]" />
-                <span className="text-lg font-bold text-slate-800">P. Tabancura</span>
+                <span className="text-sm sm:text-base font-bold text-slate-800">P. Tabancura</span>
               </div>
               <div className="flex space-x-1 items-center">
                 <Link href="/" className="p-2 rounded-lg hover:bg-slate-50"><LayoutDashboard className="h-5 w-5 text-slate-600" /></Link>
@@ -66,7 +72,14 @@ export default async function RootLayout({
                 )}
                 <Link href="/movimientos" className="p-2 rounded-lg hover:bg-slate-50"><ArrowLeftRight className="h-5 w-5 text-slate-600" /></Link>
                 {(user.role === 'ADMIN' || user.role === 'OPERADOR') && (
-                  <Link href="/solicitudes" className="p-2 rounded-lg hover:bg-slate-50"><ClipboardList className="h-5 w-5 text-slate-600" /></Link>
+                  <Link href="/solicitudes" className="relative p-2 rounded-lg hover:bg-slate-50">
+                    <ClipboardList className="h-5 w-5 text-slate-600" />
+                    {pendientesCount > 0 && (
+                      <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white shadow-xs">
+                        {pendientesCount}
+                      </span>
+                    )}
+                  </Link>
                 )}
                 {user.role === 'ADMIN' && (
                   <Link href="/usuarios" className="p-2 rounded-lg hover:bg-slate-50"><ShieldAlert className="h-5 w-5 text-slate-600" /></Link>

@@ -1,25 +1,25 @@
 'use client';
 
 import { useState } from "react";
-import { 
-  Warehouse, 
-  Plus, 
-  Search, 
-  Edit3, 
-  Trash2, 
-  MapPin, 
-  Building2, 
-  Check, 
-  X, 
-  AlertCircle, 
-  CheckCircle2, 
+import {
+  Warehouse,
+  Plus,
+  Search,
+  Edit3,
+  Trash2,
+  MapPin,
+  Building2,
+  Check,
+  X,
+  AlertCircle,
+  CheckCircle2,
   Boxes,
   Layers,
   Settings2
 } from "lucide-react";
-import { 
-  createBodegaAction, 
-  updateBodegaAction, 
+import {
+  createBodegaAction,
+  updateBodegaAction,
   deleteBodegaAction,
   createUbicacionAction,
   deleteUbicacionAction
@@ -87,7 +87,7 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
 
   // Filtered List
   const filteredBodegas = bodegas.filter((b) => {
-    const matchesSearch = 
+    const matchesSearch =
       b.nombre.toLowerCase().includes(search.toLowerCase()) ||
       b.sucursal.nombre.toLowerCase().includes(search.toLowerCase());
     const matchesSucursal = selectedSucursalFilter === "TODAS" || b.sucursalId === selectedSucursalFilter;
@@ -211,7 +211,7 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-                Gestión de Bodegas & Ubicaciones Físicas
+                Gestión de Bodegas y Ubicaciones Físicas
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 Catálogo centralizado de recintos de almacenamiento por sucursal y sus estantes/ubics internas.
@@ -254,7 +254,7 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
 
       {/* Grid: Main Form (Left 4 cols) + List Card (Right 8 cols) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        
+
         {/* FORMULARIO: REGISTRAR NUEVA BODEGA */}
         <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -312,7 +312,7 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
 
         {/* LISTA Y TABLA DE BODEGAS */}
         <div className="xl:col-span-8 space-y-4">
-          
+
           {/* Controls: Search + Filter */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
             <div className="relative flex-1 w-full">
@@ -354,7 +354,7 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
               </div>
             ) : (
               filteredBodegas.map((b) => (
-                <div 
+                <div
                   key={b.id}
                   className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500/50 dark:hover:border-teal-500/40 rounded-2xl p-4 shadow-sm transition-all flex flex-col justify-between space-y-3 group"
                 >

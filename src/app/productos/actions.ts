@@ -10,6 +10,10 @@ export async function createProductAction(formData: FormData) {
   const stockCriticoRaw = formData.get("stockCritico") as string;
   const cuentaContableId = formData.get("cuentaContableId") as string;
 
+  // Clasificación y Tipo
+  const clasificacion = (formData.get("clasificacion") as string)?.trim() || null;
+  const tipoProducto = (formData.get("tipoProducto") as string)?.trim() || null;
+
   // Conversión de Unidades
   const unidadCompra = (formData.get("unidadCompra") as string)?.trim() || null;
   const unidadesPorEnvaseRaw = formData.get("unidadesPorEnvase") as string;
@@ -45,6 +49,8 @@ export async function createProductAction(formData: FormData) {
       data: {
         codigo,
         nombre,
+        clasificacion,
+        tipoProducto,
         unidad,
         stockCritico,
         cuentaContableId: cuentaContableId || null,

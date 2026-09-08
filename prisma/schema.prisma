@@ -242,8 +242,9 @@ model Solicitud {
   areaTrabajo   String?
   cargo         String?
   centroCostoId String
-  estado        String          @default("PENDIENTE") // PENDIENTE, APROBADA, RECHAZADA
-  createdAt     DateTime        @default(now())
+  estado                String          @default("PENDIENTE") // PENDIENTE, APROBADA, RECHAZADA
+  observacionRespuesta  String?         // Comentario / observación del bodeguero al responder
+  createdAt             DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
   centroCosto   CentroCosto     @relation(fields: [centroCostoId], references: [id])
@@ -251,10 +252,12 @@ model Solicitud {
 }
 
 model SolicitudItem {
-  id          String    @id @default(cuid())
-  solicitudId String
-  productoId  String
-  cantidad    Int
+  id                    String    @id @default(cuid())
+  solicitudId           String
+  productoId            String
+  cantidad              Int       // 1. Cantidad Solicitada por Consumidor
+  cantidadEnviada       Int?      // 2. Insumo Enviado (digitado por bodeguero)
+  cantidadRecepcionada  Int?      // 3. Recepcionado (digitado por consumidor)
 
   solicitud   Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
   product     Product   @relation(fields: [productoId], references: [id])

@@ -26,7 +26,11 @@ import {
   History,
   Clock,
   PackageX,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare,
+  Truck,
+  XCircle,
+  Bell
 } from "lucide-react";
 import CatalogoSolicitudPortal, { ProductCatalogItem } from "./CatalogoSolicitudPortal";
 import ProductSearchableInput from "./ProductSearchableInput";
@@ -40,7 +44,9 @@ interface CC {
 export interface UserSolicitudItem {
   id: string;
   productoId: string;
-  cantidad: number;
+  cantidad: number; // 1. Cantidad Solicitada
+  cantidadEnviada?: number | null; // 2. Enviado por bodega
+  cantidadRecepcionada?: number | null; // 3. Recepcionado por consumidor
   product: {
     codigo: string;
     nombre: string;
@@ -57,6 +63,7 @@ export interface UserSolicitud {
   areaTrabajo: string | null;
   cargo: string | null;
   estado: string;
+  observacionRespuesta?: string | null;
   centroCosto: {
     codigo: string;
     nombre: string;
@@ -64,12 +71,22 @@ export interface UserSolicitud {
   items: UserSolicitudItem[];
 }
 
+interface DestinoItem {
+  id: string;
+  nombre: string;
+}
+
 interface Props {
   centrosCosto: CC[];
+  destinos?: DestinoItem[];
   productos: ProductCatalogItem[];
   currentUser?: {
+    id?: string;
     nombre: string;
     username: string;
+    rut?: string | null;
+    areaTrabajo?: string | null;
+    cargo?: string | null;
     role: string;
   };
   userSolicitudes?: UserSolicitud[];
@@ -82,14 +99,27 @@ interface Props {
     centroCostoId: string;
     items: { productoId: string; cantidad: number }[];
   }) => Promise<{ success: boolean }>;
+  recepcionarSolicitudAction?: (
+    solicitudId: string,
+    itemsRecepcionados: { id: string; cantidadRecepcionada: number }[]
+  ) => Promise<{ success: boolean }>;
 }
 
-export default function ClientSolicitarForm({ centrosCosto, productos, currentUser, userSolicitudes = [], initialTab = 'BUSCADOR', submitRequestAction }: Props) {
-  // Datos del Solicitante (Pre-llenado automático si ha iniciado sesión)
+export default function ClientSolicitarForm({ 
+  centrosCosto, 
+  destinos = [],
+  productos, 
+  currentUser, 
+  userSolicitudes = [], 
+  initialTab = 'BUSCADOR', 
+  submitRequestAction,
+  recepcionarSolicitudAction
+}: Props) {
+  // Datos del Solicitante (Pre-llenado automático con RUT y Área si ha iniciado sesión)
   const [nombre, setNombre] = useState(currentUser?.nombre || "");
-  const [rut, setRut] = useState("");
-  const [areaTrabajo, setAreaTrabajo] = useState("");
-  const [cargo, setCargo] = useState(currentUser?.role === 'CONSUMIDOR' ? 'Personal Clínico' : "");
+  const [rut, setRut] = useState(currentUser?.rut || "");
+  const [areaTrabajo, setAreaTrabajo] = useState(currentUser?.areaTrabajo || "");
+  const [cargo, setCargo] = useState(currentUser?.cargo || (currentUser?.role === 'CONSUMIDOR' ? 'Personal Clínico' : ""));
   const [centroCostoId, setCentroCostoId] = useState("");
   
   // Canasta unificada de la solicitud
@@ -99,6 +129,20 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
   const [isReviewing, setIsReviewing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sincronizar datos de usuario si cambian o cargan
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.nombre && !nombre) setNombre(currentUser.nombre);
+      if (currentUser.rut && !rut) setRut(currentUser.rut);
+      if (currentUser.areaTrabajo && !areaTrabajo) setAreaTrabajo(currentUser.areaTrabajo);
+      if (currentUser.cargo && !cargo) setCargo(currentUser.cargo);
+    }
+  }, [currentUser]);
+
+  // Estado para la digitación de recepción por el consumidor
+  const [recepcionValues, setRecepcionValues] = useState<{ [itemId: string]: string }>({});
+  const [loadingRecepcionId, setLoadingRecepcionId] = useState<string | null>(null);
 
   // Mobile Cart Drawer State
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
@@ -302,13 +346,33 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
                         {/* Status Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
                               sol.estado === "PENDIENTE" ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800" :
-                              sol.estado === "APROBADA" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" :
+                              sol.estado === "DESPACHADA" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800" :
+                              sol.estado === "RECEPCIONADA" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" :
                               "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                             }`}>
-                              {sol.estado === "PENDIENTE" ? "⏳ Pendiente Bodega" :
-                               sol.estado === "APROBADA" ? "✅ Aprobada" : "❌ Rechazada"}
+                              {sol.estado === "PENDIENTE" ? (
+                                <>
+                                  <Clock className="h-2.5 w-2.5" />
+                                  <span>Pendiente Bodega</span>
+                                </>
+                              ) : sol.estado === "DESPACHADA" ? (
+                                <>
+                                  <Truck className="h-2.5 w-2.5" />
+                                  <span>Despachada (En Tránsito)</span>
+                                </>
+                              ) : sol.estado === "RECEPCIONADA" ? (
+                                <>
+                                  <PackageCheck className="h-2.5 w-2.5" />
+                                  <span>Recepción Conforme</span>
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="h-2.5 w-2.5" />
+                                  <span>Rechazada</span>
+                                </>
+                              )}
                             </span>
 
                             <span className="text-[10px] font-mono text-slate-400" suppressHydrationWarning>
@@ -324,7 +388,11 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
 
                           {/* Cumplimiento de Stock Indicator */}
                           <div>
-                            {allHaveStock ? (
+                            {sol.estado === "DESPACHADA" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                <Bell className="h-3 w-3" /> Insumos despachados: digita lo recibido
+                              </span>
+                            ) : allHaveStock ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 <CheckCircle2 className="h-3 w-3" /> Stock Disponible
                               </span>
@@ -340,43 +408,198 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
                           </div>
                         </div>
 
-                        {/* Items in this request */}
-                        <div className="space-y-1.5">
-                          {sol.items.map((it) => {
-                            const stockAct = it.product.stockTotal ?? 0;
-                            const seCumple = stockAct >= it.cantidad;
+                        {/* TABLA DE 5 COLUMNAS DEL CONSUMIDOR */}
+                        <div className="space-y-2">
+                          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+                            <table className="w-full text-left text-xs border-collapse">
+                              <thead>
+                                <tr className="bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                                  <th className="py-2 px-3">Producto</th>
+                                  <th className="py-2 px-2 text-center w-24 bg-slate-200/50 dark:bg-slate-700/50">
+                                    1. Cant. Solicitada
+                                  </th>
+                                  <th className="py-2 px-2 text-center w-24 bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200">
+                                    2. Enviado x Bodega
+                                  </th>
+                                  <th className="py-2 px-2 text-center w-32 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200">
+                                    3. Recepcionado
+                                  </th>
+                                  <th className="py-2 px-2 text-center w-24">
+                                    4. Saldo Recepción
+                                  </th>
+                                  <th className="py-2 px-2 text-center w-24">
+                                    5. Saldo Solicitud
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                                {sol.items.map((it) => {
+                                  const solicitada = it.cantidad;
+                                  const enviada = it.cantidadEnviada;
+                                  const estaDespachada = sol.estado === "DESPACHADA";
+                                  const estaRecepcionada = sol.estado === "RECEPCIONADA";
 
-                            return (
-                              <div
-                                key={it.id}
-                                className="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-800/40"
+                                  // Valor actual digitado o registrado
+                                  const currentVal = recepcionValues[it.id] !== undefined
+                                    ? recepcionValues[it.id]
+                                    : it.cantidadRecepcionada !== null && it.cantidadRecepcionada !== undefined
+                                    ? it.cantidadRecepcionada.toString()
+                                    : "";
+
+                                  const numRecepcionado = parseInt(currentVal) || 0;
+
+                                  // 4. Saldo por Recepción: Enviado - Recepcionado
+                                  const saldoRecepcion = enviada !== null && enviada !== undefined
+                                    ? (currentVal !== "" ? enviada - numRecepcionado : null)
+                                    : null;
+
+                                  // 5. Saldo de Solicitud: Solicitada - Enviada (lo que bodega debió entregar y no envió)
+                                  const saldoSolicitud = enviada !== null && enviada !== undefined
+                                    ? solicitada - enviada
+                                    : null;
+
+                                  return (
+                                    <tr key={it.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
+                                      <td className="py-2 px-3">
+                                        <p className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs text-[11px]">
+                                          {it.product.nombre}
+                                        </p>
+                                        <span className="text-[9px] font-mono text-slate-400">
+                                          [{it.product.codigo}] • {it.product.unidad || 'UND'}
+                                        </span>
+                                      </td>
+
+                                      {/* 1. Cantidad Solicitada */}
+                                      <td className="py-2 px-2 text-center font-mono font-black text-slate-800 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-800/30">
+                                        {solicitada}
+                                      </td>
+
+                                      {/* 2. Enviado por Bodega */}
+                                      <td className="py-2 px-2 text-center font-mono font-black bg-blue-50/30 dark:bg-blue-950/20">
+                                        {enviada !== null && enviada !== undefined ? (
+                                          <span className="text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-900/60 px-2 py-0.5 rounded-md">
+                                            {enviada}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-normal italic text-[11px]">-</span>
+                                        )}
+                                      </td>
+
+                                      {/* 3. Cantidad Recepcionada (digitada por el consumidor si está despachada) */}
+                                      <td className="py-2 px-2 text-center bg-emerald-50/30 dark:bg-emerald-950/20">
+                                        {estaDespachada ? (
+                                          <div className="flex items-center justify-center gap-1">
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={enviada ?? solicitada}
+                                              placeholder="0"
+                                              value={currentVal}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                setRecepcionValues(prev => ({
+                                                  ...prev,
+                                                  [it.id]: val
+                                                }));
+                                              }}
+                                              className="w-16 px-1.5 py-1 text-xs text-center font-mono font-black bg-white dark:bg-slate-800 border-2 border-emerald-400 dark:border-emerald-600 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                                            />
+                                          </div>
+                                        ) : estaRecepcionada ? (
+                                          <span className="text-emerald-700 dark:text-emerald-300 font-mono font-black bg-emerald-100/70 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
+                                            {it.cantidadRecepcionada ?? "-"}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-normal italic text-[11px]">En espera</span>
+                                        )}
+                                      </td>
+
+                                      {/* 4. Saldo por Recepción */}
+                                      <td className="py-2 px-2 text-center font-mono font-black">
+                                        {saldoRecepcion !== null ? (
+                                          <span className={`px-2 py-0.5 rounded-md ${
+                                            saldoRecepcion === 0 
+                                              ? "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800" 
+                                              : "text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70"
+                                          }`}>
+                                            {saldoRecepcion > 0 ? `+${saldoRecepcion}` : saldoRecepcion}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-normal">-</span>
+                                        )}
+                                      </td>
+
+                                      {/* 5. Saldo de la Solicitud */}
+                                      <td className="py-2 px-2 text-center font-mono font-black">
+                                        {saldoSolicitud !== null ? (
+                                          <span className={`px-2 py-0.5 rounded-md ${
+                                            saldoSolicitud === 0 
+                                              ? "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40" 
+                                              : "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70"
+                                          }`}>
+                                            {saldoSolicitud}
+                                          </span>
+                                        ) : (
+                                          <span className="text-slate-400 font-normal">-</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* BOTÓN DE CONFIRMAR RECEPCIÓN POR EL CONSUMIDOR */}
+                          {sol.estado === "DESPACHADA" && (
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-500 font-medium">
+                                Digita la cantidad física que te llegó en cada insumo y presiona Confirmar:
+                              </span>
+                              <button
+                                type="button"
+                                disabled={loadingRecepcionId === sol.id}
+                                onClick={async () => {
+                                  if (!recepcionarSolicitudAction) return;
+                                  setLoadingRecepcionId(sol.id);
+                                  try {
+                                    const itemsPayload = sol.items.map(it => ({
+                                      id: it.id,
+                                      cantidadRecepcionada: parseInt(recepcionValues[it.id] || "0") || 0
+                                    }));
+                                    const res = await recepcionarSolicitudAction(sol.id, itemsPayload);
+                                    if (res.success) {
+                                      window.location.reload();
+                                    }
+                                  } catch (err) {
+                                    alert("Error al confirmar la recepción");
+                                  } finally {
+                                    setLoadingRecepcionId(null);
+                                  }
+                                }}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
                               >
-                                <div className="min-w-0 flex-1 pr-2">
-                                  <p className="font-bold text-slate-800 dark:text-slate-200 truncate text-[11px]">
-                                    {it.product.nombre}
-                                  </p>
-                                  <span className="text-[9px] font-mono text-slate-400">
-                                    {it.product.codigo}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300">
-                                    {it.cantidad} {it.product.unidad || 'UND'}
-                                  </span>
-
-                                  <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
-                                    seCumple
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                      : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
-                                  }`}>
-                                    {seCumple ? "Cumple" : `Falta (${stockAct} disp.)`}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
+                                <Check className="h-4 w-4" />
+                                <span>{loadingRecepcionId === sol.id ? "Guardando..." : "Confirmar Recepción de Insumos"}</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
+
+                        {/* Observación / Comentario del Bodeguero si fue respondida */}
+                        {sol.observacionRespuesta && (
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-xs flex items-start gap-2 text-teal-900 dark:text-teal-200">
+                            <MessageSquare className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 mt-0.5 shrink-0" />
+                            <div className="space-y-0.5 min-w-0 flex-1">
+                              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-300 block">
+                                Respuesta de Bodega:
+                              </span>
+                              <p className="font-medium italic text-slate-700 dark:text-slate-200 text-[11px] whitespace-pre-wrap break-words">
+                                &ldquo;{sol.observacionRespuesta}&rdquo;
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="pt-1 text-[10px] text-slate-400 font-medium flex items-center justify-between">
                           <span>Destino: [{sol.centroCosto.codigo}] {sol.centroCosto.nombre}</span>
@@ -692,37 +915,77 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
               </div>
             </div>
 
-            {/* Datos Solicitante & Destino para el Payload */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 space-y-3">
-              <div className="flex items-center gap-1.5 text-xs font-black text-slate-700 dark:text-slate-200 border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
-                <User className="h-4 w-4 text-teal-600" />
-                <span>Datos del Solicitante y Destino</span>
+            {/* Datos Solicitante & Destino Simplificado y Claro */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 space-y-3.5">
+              {/* Tarjeta de Identificación del Solicitante (Autocargado) */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 text-[#227262] dark:text-teal-400 flex items-center justify-center font-black text-xs shrink-0">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-100 truncate">
+                      {nombre || currentUser?.nombre || "Usuario Solicitante"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {cargo || (currentUser?.role === 'CONSUMIDOR' ? 'Personal Clínico' : 'Solicitante')}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 pl-2">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 block">RUT</span>
+                  <span className="inline-block px-2.5 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-[11px] font-mono font-black text-[#227262] dark:text-teal-300">
+                    {rut || currentUser?.rut || "No registrado"}
+                  </span>
+                </div>
               </div>
 
+              {/* Selección de Destino: Box y Centro de Costo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Box / Área de Trabajo con Destinos Registrados */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Nombre Completo *
+                  <label className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-teal-600" />
+                    Box / Área de Trabajo *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Ej. Valeria Martínez"
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262] font-semibold"
-                  />
+                    value={areaTrabajo}
+                    onChange={(e) => setAreaTrabajo(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262] font-semibold text-slate-800 dark:text-slate-100 shadow-sm"
+                  >
+                    <option value="">Selecciona Box o Lugar registrado...</option>
+                    {/* Agrupamos o listamos destinos registrados */}
+                    {destinos.length > 0 ? (
+                      destinos.map(d => (
+                        <option key={d.id} value={d.nombre}>
+                          {d.nombre}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Box dental 1 - 1er piso">Box dental 1 - 1er piso</option>
+                        <option value="Box dental 2 - 1er piso">Box dental 2 - 1er piso</option>
+                        <option value="Box dental 3 - 1er piso">Box dental 3 - 1er piso</option>
+                        <option value="Sala esterilización - 1er piso">Sala esterilización - 1er piso</option>
+                        <option value="Sala Laboratorio - 1er piso">Sala Laboratorio - 1er piso</option>
+                        <option value="Recepción 1">Recepción 1</option>
+                      </>
+                    )}
+                  </select>
                 </div>
 
+                {/* Centro de Costo Destino */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                  <label className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                    <Building2 className="h-3 w-3 text-teal-600" />
                     Centro de Costo Destino *
                   </label>
                   <select
                     required
                     value={centroCostoId}
                     onChange={(e) => setCentroCostoId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262] font-semibold"
+                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262] font-semibold text-slate-800 dark:text-slate-100 shadow-sm"
                   >
                     <option value="">Selecciona centro de costo...</option>
                     {centrosCosto.map(cc => (
@@ -732,39 +995,14 @@ export default function ClientSolicitarForm({ centrosCosto, productos, currentUs
                     ))}
                   </select>
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    RUT (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={rut}
-                    onChange={(e) => setRut(e.target.value)}
-                    placeholder="12.345.678-9"
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Box / Área de Trabajo
-                  </label>
-                  <input
-                    type="text"
-                    value={areaTrabajo}
-                    onChange={(e) => setAreaTrabajo(e.target.value)}
-                    placeholder="Box Dental 2 / Pabellón"
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262]"
-                  />
-                </div>
               </div>
             </div>
 
             {/* Materiales List Summary */}
             <div className="space-y-2">
               <h4 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                📦 Detalle de Materiales ({validItemsWithProduct.length})
+                <ClipboardList className="h-3.5 w-3.5 text-teal-600" />
+                Detalle de Materiales ({validItemsWithProduct.length})
               </h4>
               <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
                 {validItemsWithProduct.map((item, i) => (

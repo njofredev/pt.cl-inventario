@@ -20,7 +20,10 @@ export default async function proxy(request: NextRequest) {
   const payload = sessionCookie ? await verifyJWT(sessionCookie) : null;
 
   // Public routes that do not require authentication
-  const isPublicRoute = pathname === '/login' || pathname === '/solicitar';
+  const isPublicRoute = 
+    pathname === '/login' || 
+    pathname === '/solicitar' ||
+    pathname === '/productos/resumen-pdf';
 
   // Redirect unauthenticated users to login
   if (!isPublicRoute && !payload) {

@@ -149,6 +149,15 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                   {productData?.codigo || "Cargando..."}
                 </span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Inspección de Registro DB</span>
+                {productData && (
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-0.5 rounded-md border ${
+                    stockTotal > 0
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      : "bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                  }`}>
+                    Stock Real: <strong className="font-mono">{stockTotal} {productData.unidad || "UND"}</strong>
+                  </span>
+                )}
               </div>
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate mt-0.5">
                 {productData?.nombre || "Cargando producto..."}
@@ -431,9 +440,17 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                                             <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800">
                                               GUÍA
                                             </span>
+                                          ) : m.documentoTipo === "SOLICITUD" ? (
+                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+                                              SOLICITUD
+                                            </span>
+                                          ) : m.documentoTipo === "AJUSTE_RECEPCION" ? (
+                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 rounded border border-rose-200 dark:border-rose-800">
+                                              MERMA / RECHAZO
+                                            </span>
                                           ) : (
                                             <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 rounded border border-teal-200 dark:border-teal-800">
-                                              FACTURA
+                                              {m.documentoTipo === "FACTURA" ? "FACTURA" : m.documentoTipo || "DOC"}
                                             </span>
                                           )}
                                           <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 text-xs">
@@ -499,7 +516,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                                     )}
                                   </td>
 
-                                  {/* Bodega / Ubicación */}
+                                  {/* Bodega / Destino */}
                                   <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400">
                                     <div className="font-bold text-[11px] text-slate-800 dark:text-slate-200 whitespace-nowrap">
                                       {m.bodega?.nombre || "Bodega General"}
@@ -508,6 +525,12 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                                       <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 whitespace-nowrap">
                                         <MapPin className="h-2.5 w-2.5 text-teal-600 shrink-0" />
                                         <span>{m.ubicacion.nombre}</span>
+                                      </div>
+                                    )}
+                                    {m.recibidoPor && (
+                                      <div className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-1 font-medium bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md w-fit whitespace-nowrap">
+                                        <span className="text-slate-400 font-bold">Destino:</span>
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">{m.recibidoPor}</span>
                                       </div>
                                     )}
                                   </td>
