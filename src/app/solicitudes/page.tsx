@@ -17,6 +17,28 @@ export default async function SolicitudesPage() {
     redirect("/");
   }
 
+  const { getUserPermissions } = await import("@/lib/permissions");
+  const permissions = await getUserPermissions();
+
+  // Obtener sucursales y bodegas del usuario operador/admin
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: {
+      id: true,
+      nombre: true,
+      role: true,
+      sucursales: { select: { id: true, nombre: true } },
+      bodegas: { select: { id: true, nombre: true } }
+    }
+  });
+
+  // Obtener todos los destinos con su sucursal para asociar solicitudes a sus sucursales
+  const destinos = await prisma.destino.findMany({
+    include: {
+      sucursal: { select: { id: true, nombre: true } }
+    }
+  });
+
   // Fetch all solicitudes with their items, products (with stocks), and cost centers
   const rawSolicitudes = await prisma.solicitud.findMany({
     include: {
@@ -30,7 +52,14 @@ export default async function SolicitudesPage() {
                   cantidad: true,
                   bodega: {
                     select: {
-                      nombre: true
+                      id: true,
+                      nombre: true,
+                      sucursal: {
+                        select: {
+                          id: true,
+                          nombre: true
+                        }
+                      }
                     }
                   }
                 }
@@ -45,26 +74,36 @@ export default async function SolicitudesPage() {
     }
   });
 
-  const solicitudes = rawSolicitudes.map(s => ({
-    ...s,
-    items: s.items.map(item => ({
-      id: item.id,
-      productoId: item.productoId,
-      cantidad: item.cantidad,
-      cantidadEnviada: item.cantidadEnviada,
-      cantidadRecepcionada: item.cantidadRecepcionada,
-      product: {
-        codigo: item.product.codigo,
-        nombre: item.product.nombre,
-        unidad: item.product.unidad,
-        stockTotal: item.product.stocks.reduce((acc, st) => acc + st.cantidad, 0),
-        stocks: item.product.stocks.map(st => ({
-          bodega: st.bodega.nombre,
-          cantidad: st.cantidad
-        }))
-      }
-    }))
-  }));
+  const solicitudes = rawSolicitudes.map(s => {
+    // Inferir sucursal de la solicitud a través del destino registrado en s.areaTrabajo
+    const matchingDestino = destinos.find(d => d.nombre.trim().toLowerCase() === (s.areaTrabajo || "").trim().toLowerCase());
+    const sucursalSolicitud = matchingDestino?.sucursal || null;
+
+    return {
+      ...s,
+      sucursal: sucursalSolicitud,
+      items: s.items.map(item => ({
+        id: item.id,
+        productoId: item.productoId,
+        cantidad: item.cantidad,
+        cantidadEnviada: item.cantidadEnviada,
+        cantidadRecepcionada: item.cantidadRecepcionada,
+        product: {
+          codigo: item.product.codigo,
+          nombre: item.product.nombre,
+          unidad: item.product.unidad,
+          stockTotal: item.product.stocks.reduce((acc, st) => acc + st.cantidad, 0),
+          stocks: item.product.stocks.map(st => ({
+            bodegaId: st.bodega.id,
+            bodega: st.bodega.nombre,
+            sucursalId: st.bodega.sucursal?.id,
+            sucursalNombre: st.bodega.sucursal?.nombre || 'General',
+            cantidad: st.cantidad
+          }))
+        }
+      }))
+    };
+  });
 
   // Server action to approve/dispatch or reject a request with item quantities and comment
   async function updateStatusAction(
@@ -81,6 +120,9 @@ export default async function SolicitudesPage() {
     if (!adminOrOp || (adminOrOp.role !== "ADMIN" && adminOrOp.role !== "OPERADOR")) {
       throw new Error("No autorizado");
     }
+
+    const { getUserPermissions } = await import("@/lib/permissions");
+    const userPerms = await getUserPermissions();
 
     const { recalcularPPPProducto } = await import("@/lib/kardex");
 
@@ -153,6 +195,11 @@ export default async function SolicitudesPage() {
       // 4. Actualizar cada ítem con la cantidad enviada digitada por el bodeguero
       const productosModificados = new Set<string>();
 
+      // Filtro de bodegas autorizadas para el usuario despachador
+      const bodegaFilter = (userPerms && userPerms.isFiltered && userPerms.bodegasIds.length > 0)
+        ? { in: userPerms.bodegasIds }
+        : undefined;
+
       if (itemsEnviados && itemsEnviados.length > 0) {
         for (const itemEnv of itemsEnviados) {
           const qtyEnviada = Math.max(0, itemEnv.cantidadEnviada || 0);
@@ -168,32 +215,45 @@ export default async function SolicitudesPage() {
           if (qtyEnviada > 0) {
             const itemDb = currentSolicitud.items.find(it => it.id === itemEnv.id);
             if (itemDb) {
-              // Buscar bodega con stock suficiente para este producto
+              // Buscar bodega con stock suficiente dentro de las bodegas autorizadas del operador
+              const whereCondition: any = {
+                productoId: itemDb.productoId,
+                cantidad: { gte: qtyEnviada }
+              };
+              if (bodegaFilter) {
+                whereCondition.bodegaId = bodegaFilter;
+              }
+
               let stockEntry = await tx.stock.findFirst({
-                where: {
-                  productoId: itemDb.productoId,
-                  cantidad: { gte: qtyEnviada }
-                },
+                where: whereCondition,
                 orderBy: { cantidad: 'desc' },
-                include: { bodega: true, ubicacion: true }
+                include: { bodega: { include: { sucursal: true } }, ubicacion: true }
               });
 
-              // Si no hay con stock suficiente, buscar la que tenga mayor existencia
+              // Si no hay con stock suficiente en una sola bodega autorizada, buscar la que tenga mayor existencia
               if (!stockEntry) {
+                const partialWhere: any = {
+                  productoId: itemDb.productoId,
+                  cantidad: { gt: 0 }
+                };
+                if (bodegaFilter) {
+                  partialWhere.bodegaId = bodegaFilter;
+                }
+
                 stockEntry = await tx.stock.findFirst({
-                  where: {
-                    productoId: itemDb.productoId,
-                    cantidad: { gt: 0 }
-                  },
+                  where: partialWhere,
                   orderBy: { cantidad: 'desc' },
-                  include: { bodega: true, ubicacion: true }
+                  include: { bodega: { include: { sucursal: true } }, ubicacion: true }
                 });
               }
 
               const stockDisponible = stockEntry?.cantidad || 0;
               if (!stockEntry || stockDisponible < qtyEnviada) {
+                const bodegaAviso = bodegaFilter 
+                  ? "en las bodegas autorizadas de tu sucursal" 
+                  : "en bodega";
                 throw new Error(
-                  `Stock insuficiente para "${itemDb.product.nombre}". Disponible en bodega: ${stockDisponible} ${itemDb.product.unidad || "UND"}, pero intentas enviar: ${qtyEnviada}. No se permiten existencias negativas.`
+                  `Stock insuficiente para "${itemDb.product.nombre}". Disponible ${bodegaAviso}: ${stockDisponible} ${itemDb.product.unidad || "UND"}, pero intentas enviar: ${qtyEnviada}. No se permite descontar de otras sedes no autorizadas.`
                 );
               }
 
@@ -286,6 +346,7 @@ export default async function SolicitudesPage() {
 
       <ClientSolicitudesList 
         solicitudes={JSON.parse(JSON.stringify(solicitudes))} 
+        currentUser={dbUser ? JSON.parse(JSON.stringify(dbUser)) : null}
         updateStatusAction={updateStatusAction} 
       />
     </div>

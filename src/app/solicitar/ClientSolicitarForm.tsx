@@ -30,7 +30,8 @@ import {
   MessageSquare,
   Truck,
   XCircle,
-  Bell
+  Bell,
+  Warehouse
 } from "lucide-react";
 import CatalogoSolicitudPortal, { ProductCatalogItem } from "./CatalogoSolicitudPortal";
 import ProductSearchableInput from "./ProductSearchableInput";
@@ -74,11 +75,19 @@ export interface UserSolicitud {
 interface DestinoItem {
   id: string;
   nombre: string;
+  sucursalId?: string;
+  sucursalNombre?: string;
+}
+
+interface SucursalItem {
+  id: string;
+  nombre: string;
 }
 
 interface Props {
   centrosCosto: CC[];
   destinos?: DestinoItem[];
+  sucursales?: SucursalItem[];
   productos: ProductCatalogItem[];
   currentUser?: {
     id?: string;
@@ -88,6 +97,8 @@ interface Props {
     areaTrabajo?: string | null;
     cargo?: string | null;
     role: string;
+    sucursales?: { id: string; nombre: string }[];
+    bodegas?: { id: string; nombre: string }[];
   };
   userSolicitudes?: UserSolicitud[];
   initialTab?: 'BUSCADOR' | 'CATALOGO' | 'HISTORIAL';
@@ -108,6 +119,7 @@ interface Props {
 export default function ClientSolicitarForm({ 
   centrosCosto, 
   destinos = [],
+  sucursales = [],
   productos, 
   currentUser, 
   userSolicitudes = [], 
@@ -130,6 +142,12 @@ export default function ClientSolicitarForm({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Identificación de Sucursal (pre-seleccionada por sucursal del usuario o por defecto)
+  const defaultSucursalId = currentUser?.sucursales && currentUser.sucursales.length > 0 
+    ? currentUser.sucursales[0].id 
+    : (sucursales[0]?.id || "");
+  const [selectedSucursalId, setSelectedSucursalId] = useState<string>(defaultSucursalId);
+
   // Sincronizar datos de usuario si cambian o cargan
   useEffect(() => {
     if (currentUser) {
@@ -137,6 +155,9 @@ export default function ClientSolicitarForm({
       if (currentUser.rut && !rut) setRut(currentUser.rut);
       if (currentUser.areaTrabajo && !areaTrabajo) setAreaTrabajo(currentUser.areaTrabajo);
       if (currentUser.cargo && !cargo) setCargo(currentUser.cargo);
+      if (currentUser.sucursales && currentUser.sucursales.length > 0 && !selectedSucursalId) {
+        setSelectedSucursalId(currentUser.sucursales[0].id);
+      }
     }
   }, [currentUser]);
 
@@ -235,6 +256,8 @@ export default function ClientSolicitarForm({
   };
 
   const selectedCC = centrosCosto.find(cc => cc.id === centroCostoId);
+  const activeSucursal = sucursales.find(s => s.id === selectedSucursalId) || (currentUser?.sucursales?.[0]);
+  const activeSucursalName = activeSucursal?.nombre || "";
   const validItemsWithProduct = items
     .filter(item => item.productoId !== "")
     .map(item => ({
@@ -283,6 +306,7 @@ export default function ClientSolicitarForm({
                 <ProductSearchableInput
                   products={productos}
                   selectedProductId=""
+                  userSucursalName={activeSucursalName}
                   onSelect={(p) => {
                     if (p) {
                       handleAddToCart(p, 1);
@@ -300,6 +324,7 @@ export default function ClientSolicitarForm({
               <CatalogoSolicitudPortal
                 productos={productos}
                 cart={items.filter(i => i.productoId !== "")}
+                userSucursalName={activeSucursalName}
                 onAddToCart={handleAddToCart}
                 onRemoveFromCart={handleRemoveFromCart}
                 onUpdateCartQuantity={handleUpdateCartQuantity}
@@ -940,9 +965,35 @@ export default function ClientSolicitarForm({
                 </div>
               </div>
 
+              {/* Selector / Indicador de Sucursal Destino */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/60">
+                <div className="flex items-center gap-2">
+                  <Warehouse className="h-4 w-4 text-[#227262] dark:text-teal-400 shrink-0" />
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 dark:text-teal-300 block">
+                      Sucursal del Requerimiento:
+                    </span>
+                    <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                      Los inventarios y cajas de destino se calibran según esta sede.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sucursal fija preasignada al usuario */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-100/80 dark:bg-teal-900/60 border border-teal-300 dark:border-teal-700">
+                  <CheckCircle2 className="h-4 w-4 text-[#227262] dark:text-teal-300 shrink-0" />
+                  <span className="text-xs font-black text-[#227262] dark:text-teal-200">
+                    {activeSucursalName || "Sucursal Asignada"}
+                  </span>
+                  <span className="text-[10px] font-bold text-teal-700/80 dark:text-teal-300/80 bg-teal-200/60 dark:bg-teal-800/60 px-1.5 py-0.5 rounded-md ml-0.5">
+                    (Asignada por Sistema)
+                  </span>
+                </div>
+              </div>
+
               {/* Selección de Destino: Box y Centro de Costo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* Box / Área de Trabajo con Destinos Registrados */}
+                {/* Box / Área de Trabajo con Destinos Registrados y Filtrados por Sucursal */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
                     <MapPin className="h-3 w-3 text-teal-600" />
@@ -955,23 +1006,34 @@ export default function ClientSolicitarForm({
                     className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#227262] font-semibold text-slate-800 dark:text-slate-100 shadow-sm"
                   >
                     <option value="">Selecciona Box o Lugar registrado...</option>
-                    {/* Agrupamos o listamos destinos registrados */}
-                    {destinos.length > 0 ? (
-                      destinos.map(d => (
-                        <option key={d.id} value={d.nombre}>
-                          {d.nombre}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Box dental 1 - 1er piso">Box dental 1 - 1er piso</option>
-                        <option value="Box dental 2 - 1er piso">Box dental 2 - 1er piso</option>
-                        <option value="Box dental 3 - 1er piso">Box dental 3 - 1er piso</option>
-                        <option value="Sala esterilización - 1er piso">Sala esterilización - 1er piso</option>
-                        <option value="Sala Laboratorio - 1er piso">Sala Laboratorio - 1er piso</option>
-                        <option value="Recepción 1">Recepción 1</option>
-                      </>
-                    )}
+                    {/* Filtramos destinos por la sucursal activa */}
+                    {(() => {
+                      const branchDestinos = destinos.filter(d => !d.sucursalId || d.sucursalId === selectedSucursalId);
+                      if (branchDestinos.length > 0) {
+                        return branchDestinos.map(d => (
+                          <option key={d.id} value={d.nombre}>
+                            {d.nombre} {d.sucursalNombre ? `(${d.sucursalNombre})` : ''}
+                          </option>
+                        ));
+                      }
+                      if (destinos.length > 0) {
+                        return destinos.map(d => (
+                          <option key={d.id} value={d.nombre}>
+                            {d.nombre}
+                          </option>
+                        ));
+                      }
+                      return (
+                        <>
+                          <option value="Box dental 1 - 1er piso">Box dental 1 - 1er piso</option>
+                          <option value="Box dental 2 - 1er piso">Box dental 2 - 1er piso</option>
+                          <option value="Box dental 3 - 1er piso">Box dental 3 - 1er piso</option>
+                          <option value="Sala esterilización - 1er piso">Sala esterilización - 1er piso</option>
+                          <option value="Sala Laboratorio - 1er piso">Sala Laboratorio - 1er piso</option>
+                          <option value="Recepción 1">Recepción 1</option>
+                        </>
+                      );
+                    })()}
                   </select>
                 </div>
 
@@ -998,32 +1060,93 @@ export default function ClientSolicitarForm({
               </div>
             </div>
 
-            {/* Materiales List Summary */}
+            {/* Materiales List Summary con Transparencia de Stock por Sucursal */}
             <div className="space-y-2">
               <h4 className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <ClipboardList className="h-3.5 w-3.5 text-teal-600" />
                 Detalle de Materiales ({validItemsWithProduct.length})
               </h4>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                {validItemsWithProduct.map((item, i) => (
-                  <div key={i} className="p-3 flex items-center justify-between text-xs hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <span className="font-mono text-[10px] font-black text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded-md shrink-0">
-                        {item.product?.codigo || 'COD'}
-                      </span>
-                      <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {item.product?.nombre}
-                      </span>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 max-h-60 overflow-y-auto pr-1 hide-scrollbar">
+                {validItemsWithProduct.map((item, i) => {
+                  const currentSucursalStock = item.product?.stocksBySucursal?.find(s => s.sucursalId === selectedSucursalId)?.cantidad ?? 0;
+                  const isStockShortageInBranch = currentSucursalStock < item.cantidad;
+
+                  return (
+                    <div key={i} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <span className="font-mono text-[10px] font-black text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded-md shrink-0">
+                            {item.product?.codigo || 'COD'}
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 truncate text-xs">
+                            {item.product?.nombre}
+                          </span>
+                        </div>
+
+                        {/* Breakdown de stock transparente */}
+                        {item.product?.stocksBySucursal && item.product.stocksBySucursal.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[10px]">
+                            <span className="text-slate-400 font-medium">Stock disponible:</span>
+                            {item.product.stocksBySucursal.map(s => {
+                              const isSelectedBranch = s.sucursalId === selectedSucursalId;
+                              return (
+                                <span
+                                  key={s.sucursalId}
+                                  className={`px-1.5 py-0.2 rounded font-mono font-bold ${
+                                    isSelectedBranch
+                                      ? s.cantidad >= item.cantidad
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                        : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                  }`}
+                                >
+                                  {s.sucursalNombre}: {s.cantidad}
+                                  {isSelectedBranch ? ' (Esta Sede)' : ''}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                          {item.cantidad} {item.product?.unidad || 'UND'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                        {item.cantidad} {item.product?.unidad || 'UND'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
+
+            {/* Alerta de advertencia si algún producto no tiene stock suficiente en la sucursal seleccionada */}
+            {(() => {
+              const shortageItems = validItemsWithProduct.filter(item => {
+                const curStock = item.product?.stocksBySucursal?.find(s => s.sucursalId === selectedSucursalId)?.cantidad ?? 0;
+                return curStock < item.cantidad;
+              });
+
+              if (shortageItems.length > 0) {
+                return (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs rounded-xl flex items-start gap-2.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="space-y-0.5 min-w-0">
+                      <strong className="block font-black text-[11px] text-amber-800 dark:text-amber-300 uppercase tracking-wide">
+                        Aviso de Stock en {activeSucursalName || 'tu sucursal'}
+                      </strong>
+                      <p className="text-[11px] leading-relaxed">
+                        {shortageItems.length === 1
+                          ? `El producto "${shortageItems[0].product?.nombre}" supera el stock local disponible en ${activeSucursalName || 'esta sede'}.`
+                          : `Hay ${shortageItems.length} insumos que superan el stock local en ${activeSucursalName || 'esta sede'}.`
+                        } Bodega podrá despachar parcialmente o coordinar traslado desde otra sede si corresponde.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Error inside modal */}
             {error && (

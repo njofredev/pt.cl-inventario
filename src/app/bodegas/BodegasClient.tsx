@@ -15,7 +15,9 @@ import {
   CheckCircle2,
   Boxes,
   Layers,
-  Settings2
+  Settings2,
+  ShieldAlert,
+  Lock
 } from "lucide-react";
 import {
   createBodegaAction,
@@ -55,9 +57,10 @@ interface Bodega {
 interface Props {
   initialBodegas: Bodega[];
   sucursales: Sucursal[];
+  isAdmin?: boolean;
 }
 
-export default function BodegasClient({ initialBodegas, sucursales }: Props) {
+export default function BodegasClient({ initialBodegas, sucursales, isAdmin = false }: Props) {
   const [bodegas, setBodegas] = useState<Bodega[]>(initialBodegas);
   const [search, setSearch] = useState("");
   const [selectedSucursalFilter, setSelectedSucursalFilter] = useState("TODAS");
@@ -253,65 +256,67 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
       )}
 
       {/* Grid: Main Form (Left 4 cols) + List Card (Right 8 cols) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className={`grid grid-cols-1 ${isAdmin ? 'xl:grid-cols-12' : 'xl:grid-cols-1'} gap-6`}>
 
-        {/* FORMULARIO: REGISTRAR NUEVA BODEGA */}
-        <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-            <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Plus className="h-4 w-4 text-teal-600" /> Nueva Bodega
-            </h2>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              Asigna una nueva bodega física a una sucursal
-            </p>
-          </div>
+        {/* FORMULARIO: REGISTRAR NUEVA BODEGA (Exclusivo Administradores) */}
+        {isAdmin ? (
+          <div className="xl:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Plus className="h-4 w-4 text-teal-600" /> Nueva Bodega
+              </h2>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Asigna una nueva bodega física a una sucursal
+              </p>
+            </div>
 
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Sucursal Destino *
-              </label>
-              <select
-                value={newSucursalId}
-                onChange={(e) => setNewSucursalId(e.target.value)}
-                required
-                className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Sucursal Destino *
+                </label>
+                <select
+                  value={newSucursalId}
+                  onChange={(e) => setNewSucursalId(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                >
+                  {sucursales.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      📍 Sucursal: {s.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                  Nombre de la Bodega *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newNombre}
+                  onChange={(e) => setNewNombre(e.target.value)}
+                  placeholder="ej: Bodega Clínica (Vitacura)"
+                  className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isCreating || !newNombre.trim()}
+                className="w-full py-3 bg-[#162158] hover:bg-[#0f1842] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm active-scale-down cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {sucursales.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    📍 Sucursal: {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                Nombre de la Bodega *
-              </label>
-              <input
-                type="text"
-                required
-                value={newNombre}
-                onChange={(e) => setNewNombre(e.target.value)}
-                placeholder="ej: Bodega Clínica (Vitacura)"
-                className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isCreating || !newNombre.trim()}
-              className="w-full py-3 bg-[#162158] hover:bg-[#0f1842] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm active-scale-down cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>{isCreating ? "Registrando..." : "Guardar Bodega"}</span>
-            </button>
-          </form>
-        </div>
+                <Plus className="h-4 w-4" />
+                <span>{isCreating ? "Registrando..." : "Guardar Bodega"}</span>
+              </button>
+            </form>
+          </div>
+        ) : null}
 
         {/* LISTA Y TABLA DE BODEGAS */}
-        <div className="xl:col-span-8 space-y-4">
+        <div className={`${isAdmin ? 'xl:col-span-8' : 'xl:col-span-12'} space-y-4`}>
 
           {/* Controls: Search + Filter */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
@@ -369,24 +374,26 @@ export default function BodegasClient({ initialBodegas, sucursales }: Props) {
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => startEditing(b)}
-                          className="p-1.5 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg transition-colors cursor-pointer"
-                          title="Editar Bodega"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingId(b.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors cursor-pointer"
-                          title="Eliminar Bodega"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditing(b)}
+                            className="p-1.5 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-lg transition-colors cursor-pointer"
+                            title="Editar Bodega"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingId(b.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors cursor-pointer"
+                            title="Eliminar Bodega"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 

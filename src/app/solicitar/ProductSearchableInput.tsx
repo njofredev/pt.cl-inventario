@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, Check, Package } from 'lucide-react';
 
+import { StockSucursalDetail } from './CatalogoSolicitudPortal';
+
 interface Product {
   id: string;
   codigo: string;
@@ -15,11 +17,13 @@ interface Product {
   unidadEnvase?: string | null;
   unidadesPorConsumo?: number | null;
   stockTotal?: number;
+  stocksBySucursal?: StockSucursalDetail[];
 }
 
 interface ProductSearchableInputProps {
   products: Product[];
   selectedProductId: string;
+  userSucursalName?: string | null;
   onSelect: (product: Product | null) => void;
   placeholder?: string;
   required?: boolean;
@@ -28,6 +32,7 @@ interface ProductSearchableInputProps {
 export default function ProductSearchableInput({
   products: initialProducts,
   selectedProductId,
+  userSucursalName,
   onSelect,
   placeholder = "Buscar insumo por nombre o código...",
   required = false
@@ -138,34 +143,62 @@ export default function ProductSearchableInput({
             <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
               {filteredProducts.length > 0 ? (
                 <>
-                  <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredProducts.map((p) => (
                       <div
                         key={p.id}
                         onClick={() => handleSelectProduct(p)}
-                        className="p-2.5 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer transition-colors flex items-center justify-between text-xs font-medium"
+                        className="p-2.5 hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer transition-colors flex flex-col sm:flex-row sm:items-center justify-between text-xs font-medium gap-1.5"
                       >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <span className="font-mono text-[10px] font-black text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/60 px-1.5 py-0.5 rounded shrink-0">
-                            {p.codigo}
-                          </span>
-                          <span className="font-bold text-slate-700 dark:text-slate-200 truncate">
-                            {p.nombre}
-                          </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <span className="font-mono text-[10px] font-black text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/60 px-1.5 py-0.5 rounded shrink-0">
+                              {p.codigo}
+                            </span>
+                            <span className="font-bold text-slate-700 dark:text-slate-200 truncate">
+                              {p.nombre}
+                            </span>
+                            {p.unidad && (
+                              <span className="text-[9px] font-extrabold text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded shrink-0">
+                                {p.unidad}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Branch stock breakdown tags */}
+                          {p.stocksBySucursal && p.stocksBySucursal.length > 0 && (
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              {p.stocksBySucursal.map((st, idx) => {
+                                const isLocal = userSucursalName ? st.sucursalNombre.toLowerCase().includes(userSucursalName.toLowerCase()) : false;
+                                return (
+                                  <span
+                                    key={idx}
+                                    className={`inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.2 rounded border ${
+                                      st.cantidad > 0
+                                        ? isLocal
+                                          ? 'bg-emerald-100/70 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 border-emerald-300'
+                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200'
+                                        : 'bg-rose-50 text-rose-500 border-rose-200/50'
+                                    }`}
+                                  >
+                                    <span>{st.sucursalNombre.replace('Sucursal ', '')}:</span>
+                                    <strong className="font-mono">{st.cantidad}</strong>
+                                    {isLocal && <span className="text-[7.5px] text-emerald-700 font-extrabold">(Tu Sede)</span>}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
                           {(p.stockTotal ?? 0) > 0 ? (
-                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded">
-                              Stock: {p.stockTotal}
+                            <span className="text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-md">
+                              Total: {p.stockTotal}
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-1.5 py-0.5 rounded">
-                              A pedido
-                            </span>
-                          )}
-                          {p.unidad && (
-                            <span className="text-[9px] font-extrabold text-slate-500 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                              {p.unidad}
+                            <span className="text-[9.5px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-md">
+                              Sin stock (0)
                             </span>
                           )}
                         </div>

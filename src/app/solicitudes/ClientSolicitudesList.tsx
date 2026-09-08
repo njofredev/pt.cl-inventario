@@ -16,7 +16,10 @@ interface SolicitudItem {
     unidad: string | null;
     stockTotal?: number;
     stocks?: {
+      bodegaId?: string;
       bodega: string;
+      sucursalId?: string;
+      sucursalNombre?: string;
       cantidad: number;
     }[];
   };
@@ -31,6 +34,10 @@ interface Solicitud {
   cargo: string | null;
   estado: string;
   observacionRespuesta?: string | null;
+  sucursal?: {
+    id: string;
+    nombre: string;
+  } | null;
   centroCosto: {
     codigo: string;
     nombre: string;
@@ -40,6 +47,13 @@ interface Solicitud {
 
 interface Props {
   solicitudes: Solicitud[];
+  currentUser?: {
+    id: string;
+    nombre: string;
+    role: string;
+    sucursales: { id: string; nombre: string }[];
+    bodegas: { id: string; nombre: string }[];
+  } | null;
   updateStatusAction: (
     solicitudId: string, 
     status: "DESPACHADA" | "RECHAZADA", 
@@ -48,7 +62,7 @@ interface Props {
   ) => Promise<{ success: boolean }>;
 }
 
-export default function ClientSolicitudesList({ solicitudes, updateStatusAction }: Props) {
+export default function ClientSolicitudesList({ solicitudes, currentUser, updateStatusAction }: Props) {
   const [filter, setFilter] = useState<"TODAS" | "PENDIENTE" | "DESPACHADA" | "RECEPCIONADA" | "RECHAZADA">("PENDIENTE");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   
@@ -241,7 +255,25 @@ export default function ClientSolicitudesList({ solicitudes, updateStatusAction 
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                  {/* Branch Matching Warning Banner if request belongs to another sucursal */}
+                  {(() => {
+                    if (!currentUser || currentUser.role === 'ADMIN') return null;
+                    if (!solicitud.sucursal) return null;
+                    const userSucursalIds = currentUser.sucursales.map(s => s.id);
+                    const isMismatched = userSucursalIds.length > 0 && !userSucursalIds.includes(solicitud.sucursal.id);
+                    if (!isMismatched) return null;
+
+                    return (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="font-semibold">
+                          ⚠️ Solicitud originada para <strong className="underline">{solicitud.sucursal.nombre}</strong>. Tus permisos de operador están configurados para {currentUser.sucursales.map(s => s.nombre).join(', ')}.
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                       <span className="font-bold text-slate-800 dark:text-slate-100 truncate">{solicitud.nombre}</span>
@@ -255,6 +287,12 @@ export default function ClientSolicitudesList({ solicitudes, updateStatusAction 
                       <Briefcase className="h-4 w-4 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                       <span className="truncate font-medium">
                         {solicitud.cargo || "Personal Clínico"} {solicitud.areaTrabajo ? `| ${solicitud.areaTrabajo}` : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Warehouse className="h-4 w-4 text-[#227262] dark:text-teal-400 flex-shrink-0" />
+                      <span className="truncate font-bold text-slate-700 dark:text-slate-200">
+                        {solicitud.sucursal?.nombre || "Sucursal General"}
                       </span>
                     </div>
                   </div>
@@ -506,8 +544,33 @@ export default function ClientSolicitudesList({ solicitudes, updateStatusAction 
                                 {item.product.nombre}
                               </div>
                               <div className="text-[10px] text-slate-400 font-mono">
-                                [{item.product.codigo}] • Disp: {item.product.stockTotal ?? 0} {item.product.unidad || "UND"}
+                                [{item.product.codigo}] • Disp. Total: {item.product.stockTotal ?? 0} {item.product.unidad || "UND"}
                               </div>
+                              {/* Desglose por Bodega para máxima transparencia */}
+                              {item.product.stocks && item.product.stocks.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                  {item.product.stocks.map((st, idx) => {
+                                    const isPermittedBodega = currentUser?.role === 'ADMIN' || 
+                                      currentUser?.bodegas.some(b => b.id === st.bodegaId) ||
+                                      currentUser?.sucursales.some(s => s.id === st.sucursalId);
+
+                                    return (
+                                      <span 
+                                        key={idx}
+                                        className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border ${
+                                          isPermittedBodega
+                                            ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-800 font-bold'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                                        }`}
+                                      >
+                                        <span>{st.bodega}:</span>
+                                        <strong>{st.cantidad}</strong>
+                                        {isPermittedBodega && <span className="text-[7.5px] text-teal-600 font-extrabold">(Tu Bodega)</span>}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </td>
 
                             <td className="py-2 px-2.5 text-center font-mono font-black text-slate-700 dark:text-slate-300">

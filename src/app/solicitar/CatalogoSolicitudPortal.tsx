@@ -23,6 +23,14 @@ import {
   Info
 } from 'lucide-react';
 
+export interface StockSucursalDetail {
+  bodegaId: string;
+  bodegaNombre: string;
+  sucursalId: string;
+  sucursalNombre: string;
+  cantidad: number;
+}
+
 export interface ProductCatalogItem {
   id: string;
   codigo: string;
@@ -35,11 +43,13 @@ export interface ProductCatalogItem {
   unidadEnvase?: string | null;
   unidadesPorConsumo?: number | null;
   stockTotal?: number;
+  stocksBySucursal?: StockSucursalDetail[];
 }
 
 interface Props {
   productos: ProductCatalogItem[];
   cart: { productoId: string; cantidad: number }[];
+  userSucursalName?: string | null;
   onAddToCart: (product: ProductCatalogItem, cantidad: number) => void;
   onRemoveFromCart: (productoId: string) => void;
   onUpdateCartQuantity: (productoId: string, cantidad: number) => void;
@@ -94,6 +104,7 @@ const CATEGORY_STYLES: Record<string, { icon: any; color: string; bg: string; bo
 export default function CatalogoSolicitudPortal({
   productos,
   cart,
+  userSucursalName,
   onAddToCart,
   onRemoveFromCart,
   onUpdateCartQuantity,
@@ -370,6 +381,7 @@ export default function CatalogoSolicitudPortal({
               <ProductsListGrid 
                 products={filteredProducts}
                 cart={cart}
+                userSucursalName={userSucursalName}
                 getItemQuantity={getItemQuantity}
                 setItemQuantity={setItemQuantity}
                 onAddToCart={onAddToCart}
@@ -390,6 +402,7 @@ export default function CatalogoSolicitudPortal({
 function ProductsListGrid({
   products,
   cart,
+  userSucursalName,
   getItemQuantity,
   setItemQuantity,
   onAddToCart,
@@ -400,6 +413,7 @@ function ProductsListGrid({
 }: {
   products: ProductCatalogItem[];
   cart: { productoId: string; cantidad: number }[];
+  userSucursalName?: string | null;
   getItemQuantity: (id: string) => number;
   setItemQuantity: (id: string, qty: number) => void;
   onAddToCart: (product: ProductCatalogItem, cantidad: number) => void;
@@ -461,15 +475,41 @@ function ProductsListGrid({
                 {(p.stockTotal ?? 0) > 0 ? (
                   <span className="inline-flex items-center gap-1 font-sans font-bold text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Stock: {p.stockTotal} {p.unidad || 'UND'}
+                    Total: {p.stockTotal} {p.unidad || 'UND'}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 font-sans font-bold text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    Sin stock (A pedido: 0)
+                    Sin stock total (0)
                   </span>
                 )}
               </div>
+
+              {/* Badges de Sucursales y Bodegas */}
+              {p.stocksBySucursal && p.stocksBySucursal.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                  {p.stocksBySucursal.map((st, idx) => {
+                    const isLocal = userSucursalName ? st.sucursalNombre.toLowerCase().includes(userSucursalName.toLowerCase()) : false;
+                    return (
+                      <span
+                        key={idx}
+                        className={`inline-flex items-center gap-1 text-[9.5px] font-extrabold px-2 py-0.5 rounded-md border ${
+                          st.cantidad > 0
+                            ? isLocal
+                              ? 'bg-emerald-100/80 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/30'
+                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                            : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200/70 dark:border-rose-900/50'
+                        }`}
+                        title={`${st.sucursalNombre} - ${st.bodegaNombre}`}
+                      >
+                        <span>{st.sucursalNombre.replace('Sucursal ', '')}:</span>
+                        <strong className="font-mono">{st.cantidad}</strong>
+                        {isLocal && <span className="text-[8px] uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-black">(Tu Sede)</span>}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Stepper + Action Button (Inline & Compact) */}

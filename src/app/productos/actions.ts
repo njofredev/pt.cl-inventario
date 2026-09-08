@@ -158,10 +158,10 @@ export async function getProductDetailsAction(id: string) {
           }
         },
         movimientos: {
-          take: 20,
+          take: 50,
           orderBy: [
-            { fecha: 'desc' },
-            { createdAt: 'desc' }
+            { fecha: 'asc' },
+            { createdAt: 'asc' }
           ],
           include: {
             tipoMovimiento: true,

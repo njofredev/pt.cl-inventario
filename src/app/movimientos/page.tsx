@@ -130,7 +130,7 @@ export default async function MovimientosPage(props: PageProps) {
     },
   });
 
-  // 6. Fetch DocumentoMovimientos for Pending Reconciliation & Alerts
+  // 6. Fetch DocumentoMovimientos for Pending Reconciliation, Alerts & Complete Invoices History
   const documentosPendientes = await prisma.documentoMovimiento.findMany({
     orderBy: {
       fechaDocumento: "desc",
@@ -146,7 +146,31 @@ export default async function MovimientosPage(props: PageProps) {
         include: {
           producto: {
             select: {
+              id: true,
               codigo: true,
+              nombre: true,
+              unidad: true,
+            },
+          },
+        },
+      },
+      movimientos: {
+        select: {
+          id: true,
+          bodega: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          ubicacion: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+          usuario: {
+            select: {
               nombre: true,
             },
           },

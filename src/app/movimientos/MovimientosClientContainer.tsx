@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, ReceiptText, Clock, MapPin, Layers, History, Plus, Minus, Search, Tag, ArrowDownLeft, ArrowUpRight, Calendar } from 'lucide-react';
+import { Building2, ReceiptText, Clock, MapPin, Layers, History, Plus, Minus, Search, Tag, ArrowDownLeft, ArrowUpRight, Calendar, Receipt, FileCheck2 } from 'lucide-react';
 import MovimientoComprasForm from './MovimientoComprasForm';
 import MovimientoForm from './MovimientoForm';
 import RecepcionesPendientesList from './RecepcionesPendientesList';
+import UltimosIngresosFacturasList from './UltimosIngresosFacturasList';
 
 interface Props {
   products: any[];
@@ -42,6 +43,9 @@ export default function MovimientosClientContainer({
   const [activeTab, setActiveTab] = useState<'COMPRAS' | 'INGRESO_DIRECTO' | 'EGRESO_DIRECTO' | 'PENDIENTES' | 'HISTORIAL'>(() => {
     return resolveTab(queryTab || defaultTab);
   });
+
+  // Bitácora view toggle: individual movements vs complete invoices
+  const [historialView, setHistorialView] = useState<'MOVIMIENTOS' | 'FACTURAS_COMPLETAS'>('MOVIMIENTOS');
 
   // Bitácora filtering states
   const [historialFilter, setHistorialFilter] = useState<'TODOS' | 'ENTRADAS' | 'SALIDAS'>('TODOS');
@@ -298,51 +302,96 @@ export default function MovimientosClientContainer({
 
           {activeTab === 'HISTORIAL' && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-5">
+              {/* Header Principal de la Bitácora */}
               <div className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                     <History className="h-4.5 w-4.5 text-teal-600" />
-                    Bitácora y Registro de Movimientos
+                    Histórico y Bitácora de Movimientos
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Historial cronológico con identificador correlativo único para trazabilidad completa de entradas y salidas.
+                    {historialView === 'MOVIMIENTOS'
+                      ? "Auditoría cronológica por producto individual con identificadores correlativos (N° SAL- / ING-)."
+                      : "Visualización íntegra de facturas y guías ingresadas con su detalle completo de productos desglosados."}
                   </p>
                 </div>
 
-                {/* Filtro Rápido Tipo (Todos / Entradas / Salidas) */}
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+                {/* Selector de Sub-pestañas: Movimientos vs Facturas Completas */}
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
                   <button
-                    onClick={() => setHistorialFilter('TODOS')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      historialFilter === 'TODOS'
-                        ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                    type="button"
+                    onClick={() => setHistorialView('MOVIMIENTOS')}
+                    className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      historialView === 'MOVIMIENTOS'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                     }`}
                   >
-                    Todos ({movements.length})
+                    <Layers className="h-3.5 w-3.5 text-teal-600" />
+                    <span>Movimientos por Producto</span>
                   </button>
+
                   <button
-                    onClick={() => setHistorialFilter('ENTRADAS')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                      historialFilter === 'ENTRADAS'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                    type="button"
+                    onClick={() => setHistorialView('FACTURAS_COMPLETAS')}
+                    className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                      historialView === 'FACTURAS_COMPLETAS'
+                        ? 'bg-[#227262] text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                     }`}
                   >
-                    <ArrowDownLeft className="h-3 w-3" /> Entradas (+{totalEntradas})
-                  </button>
-                  <button
-                    onClick={() => setHistorialFilter('SALIDAS')}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                      historialFilter === 'SALIDAS'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
-                    }`}
-                  >
-                    <ArrowUpRight className="h-3 w-3" /> Salidas (-{totalSalidas})
+                    <Receipt className="h-3.5 w-3.5" />
+                    <span>Facturas & Guías Completas ({documentosPendientes.length})</span>
                   </button>
                 </div>
               </div>
+
+              {/* VISTA 1: FACTURAS & GUÍAS COMPLETAS INGRESADAS */}
+              {historialView === 'FACTURAS_COMPLETAS' && (
+                <UltimosIngresosFacturasList documentos={documentosPendientes} />
+              )}
+
+              {/* VISTA 2: MOVIMIENTOS POR PRODUCTO INDIVIDUAL */}
+              {historialView === 'MOVIMIENTOS' && (
+                <div className="space-y-4">
+                  {/* Filtro Rápido Tipo (Todos / Entradas / Salidas) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      Filtrar flujo de movimientos:
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+                      <button
+                        onClick={() => setHistorialFilter('TODOS')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          historialFilter === 'TODOS'
+                            ? 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                        }`}
+                      >
+                        Todos ({movements.length})
+                      </button>
+                      <button
+                        onClick={() => setHistorialFilter('ENTRADAS')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                          historialFilter === 'ENTRADAS'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                        }`}
+                      >
+                        <ArrowDownLeft className="h-3 w-3" /> Entradas (+{totalEntradas})
+                      </button>
+                      <button
+                        onClick={() => setHistorialFilter('SALIDAS')}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                          historialFilter === 'SALIDAS'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                        }`}
+                      >
+                        <ArrowUpRight className="h-3 w-3" /> Salidas (-{totalSalidas})
+                      </button>
+                    </div>
+                  </div>
 
               {/* Barra de Filtro y Búsqueda */}
               <div className="flex flex-col sm:flex-row gap-3">
@@ -422,7 +471,7 @@ export default function MovimientosClientContainer({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-400">
-                            <span className="font-medium text-slate-500 dark:text-slate-400">
+                            <span className="font-medium text-slate-500 dark:text-slate-400" suppressHydrationWarning>
                               {new Date(t.fecha).toLocaleDateString('es-CL', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -476,6 +525,8 @@ export default function MovimientosClientContainer({
                   })}
                 </div>
               )}
+            </div>
+          )}
             </div>
           )}
         </div>

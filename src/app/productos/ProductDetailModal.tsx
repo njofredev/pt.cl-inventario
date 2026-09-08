@@ -22,7 +22,11 @@ import {
   User,
   Hash,
   Tag,
-  Warehouse
+  Warehouse,
+  ArrowUpDown,
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { getProductDetailsAction, updateProductAction, deleteProductAction } from "./actions";
 import Link from "next/link";
@@ -40,6 +44,9 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
   const [productData, setProductData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"INSPECTION" | "LOCATIONS" | "MOVEMENTS" | "EDIT">("INSPECTION");
   const [copiedId, setCopiedId] = useState(false);
+  const [movementsSortOrder, setMovementsSortOrder] = useState<"asc" | "desc">("desc");
+  const [movementsPage, setMovementsPage] = useState(1);
+  const MOVEMENTS_PER_PAGE = 4;
 
   // Edit states
   const [nombre, setNombre] = useState("");
@@ -132,13 +139,14 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
   };
 
   const stockTotal = productData?.stocks?.reduce((acc: number, curr: any) => acc + curr.cantidad, 0) || 0;
+  const valorizacionTotal = stockTotal * (productData?.ppp || 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#0E172E] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 font-sans transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#0E172E] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-[95vw] xl:max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 font-sans transition-all">
 
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-[#0B1326]">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-[#0B1326]">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-600 font-bold shrink-0">
               <Database className="h-5 w-5" />
@@ -229,7 +237,7 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                 <div className="space-y-5">
 
                   {/* Stock Banner */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-slate-50 dark:bg-[#131E3A] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Stock Físico Total</span>
                       <div className="mt-2 flex items-baseline gap-2">
@@ -249,10 +257,38 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                     <div className="bg-slate-50 dark:bg-[#131E3A] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
                       <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Valor PPP Calculado</span>
                       <div className="mt-2 flex items-baseline gap-1">
-                        <span className="text-2xl font-black text-teal-700 dark:text-teal-300">
-                          ${productData.ppp?.toLocaleString("es-CL") || "0"}
+                        <span className="text-2xl font-black text-teal-700 dark:text-teal-300 font-mono">
+                          ${(productData.ppp || 0).toLocaleString("es-CL", {
+                            minimumFractionDigits: (productData.ppp || 0) % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2
+                          })}
                         </span>
                         <span className="text-[10px] text-slate-400">/ unidad</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-4 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                          <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          Stock en Dinero
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">
+                          (Stock × PPP)
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
+                          ${valorizacionTotal.toLocaleString("es-CL", {
+                            minimumFractionDigits: valorizacionTotal % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                        {valorizacionTotal % 1 !== 0 && (
+                          <span className="text-[10px] font-bold text-slate-400">
+                            (~${Math.round(valorizacionTotal).toLocaleString("es-CL")})
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -374,182 +410,272 @@ export default function ProductDetailModal({ productId, cuentasContables, unidad
                         Historial Detallado de Movimientos & Compras
                       </h3>
                       <p className="text-[11px] text-slate-400 font-medium">
-                        Trazabilidad completa con documento de origen, proveedor, valor neto unitario y PPP resultante.
+                        Trazabilidad cronológica completa con documento de origen, proveedor, valor neto unitario y PPP resultante.
                       </p>
                     </div>
-                    <span className="text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800 w-fit">
-                      {productData.movimientos.length} transacciones registradas
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {/* Botón de alternar orden cronológico */}
+                      <button
+                        type="button"
+                        onClick={() => setMovementsSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                        className="inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 shadow-2xs transition-all cursor-pointer"
+                        title="Cambiar dirección de orden cronológico"
+                      >
+                        <ArrowUpDown className="h-3 w-3 text-teal-600 dark:text-teal-400" />
+                        <span>Orden: {movementsSortOrder === "asc" ? "Cronológico Ascendente (Antiguo → Reciente)" : "Descendente (Reciente → Antiguo)"}</span>
+                      </button>
+                      <span className="text-[10px] font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-800 w-fit">
+                        {productData.movimientos.length} transacciones registradas
+                      </span>
+                    </div>
                   </div>
 
-                  {productData.movimientos.length === 0 ? (
-                    <div className="p-8 text-center bg-slate-50 dark:bg-[#131E3A] rounded-2xl text-xs text-slate-400 border border-slate-200 dark:border-slate-800">
-                      No hay transacciones registradas para este producto.
-                    </div>
-                  ) : (
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[840px]">
-                          <thead>
-                            <tr className="bg-slate-50 dark:bg-[#0B1326] text-[9.5px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                              <th className="py-3 px-3.5 pl-4">Fecha & Tipo</th>
-                              <th className="py-3 px-3.5">Documento & Origen</th>
-                              <th className="py-3 px-3 text-right">Cantidad</th>
-                              <th className="py-3 px-3 text-right">Valor Unit. Neto</th>
-                              <th className="py-3 px-3 text-right">Total Neto</th>
-                              <th className="py-3 px-3 text-right">PPP en Fecha</th>
-                              <th className="py-3 px-3.5">Bodega / Destino</th>
-                              <th className="py-3 px-3.5 text-right pr-4">Operador</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                            {productData.movimientos.map((m: any) => {
-                              const isEntrada = m.tipoMovimiento?.esEntrada ?? true;
-                              const prov = m.proveedor || m.documentoMovimiento?.proveedor;
-                              const valUnit = m.valorUnitario || 0;
-                              const totalNeto = valUnit * m.cantidad;
+                  {(() => {
+                    const sortedMovimientos = [...productData.movimientos].sort((a: any, b: any) => {
+                      const timeA = new Date(a.fecha).getTime();
+                      const timeB = new Date(b.fecha).getTime();
+                      if (timeA !== timeB) {
+                        return movementsSortOrder === "asc" ? timeA - timeB : timeB - timeA;
+                      }
+                      const createdA = new Date(a.createdAt || a.fecha).getTime();
+                      const createdB = new Date(b.createdAt || b.fecha).getTime();
+                      return movementsSortOrder === "asc" ? createdA - createdB : createdB - createdA;
+                    });
 
-                              return (
-                                <tr key={m.id} className="hover:bg-teal-50/40 dark:hover:bg-slate-800/50 transition-colors">
-                                  {/* Fecha & Tipo */}
-                                  <td className="py-3 px-3.5 pl-4">
-                                    <div className="flex flex-col gap-1">
-                                      <span className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                                        {new Date(m.fecha).toLocaleDateString("es-CL", {
-                                          day: "2-digit",
-                                          month: "2-digit",
-                                          year: "numeric"
-                                        })}
-                                      </span>
-                                      <span className={`inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-md text-[9px] font-black border tracking-wide uppercase ${
-                                        isEntrada
-                                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800"
-                                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800"
-                                      }`}>
-                                        {m.tipoMovimiento?.nombre || (isEntrada ? "Ingreso" : "Egreso")}
-                                      </span>
-                                    </div>
-                                  </td>
+                    const totalMovs = sortedMovimientos.length;
+                    const totalPages = Math.ceil(totalMovs / MOVEMENTS_PER_PAGE) || 1;
+                    const currentPage = Math.min(Math.max(1, movementsPage), totalPages);
+                    const startIndex = (currentPage - 1) * MOVEMENTS_PER_PAGE;
+                    const paginatedMovimientos = sortedMovimientos.slice(startIndex, startIndex + MOVEMENTS_PER_PAGE);
 
-                                  {/* Documento & Proveedor */}
-                                  <td className="py-3 px-3.5">
-                                    <div className="space-y-1">
-                                      {m.documentoNumero ? (
-                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                          {m.documentoTipo === "GUIA_DESPACHO" ? (
-                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800">
-                                              GUÍA
-                                            </span>
-                                          ) : m.documentoTipo === "SOLICITUD" ? (
-                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
-                                              SOLICITUD
-                                            </span>
-                                          ) : m.documentoTipo === "AJUSTE_RECEPCION" ? (
-                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 rounded border border-rose-200 dark:border-rose-800">
-                                              MERMA / RECHAZO
-                                            </span>
-                                          ) : (
-                                            <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 rounded border border-teal-200 dark:border-teal-800">
-                                              {m.documentoTipo === "FACTURA" ? "FACTURA" : m.documentoTipo || "DOC"}
-                                            </span>
-                                          )}
-                                          <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 text-xs">
-                                            N° {m.documentoNumero}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-slate-400 italic text-[11px]">Sin doc. (Ajuste)</span>
-                                      )}
+                    if (totalMovs === 0) {
+                      return (
+                        <div className="p-8 text-center bg-slate-50 dark:bg-[#131E3A] rounded-2xl text-xs text-slate-400 border border-slate-200 dark:border-slate-800">
+                          No hay transacciones registradas para este producto.
+                        </div>
+                      );
+                    }
 
-                                      {prov ? (
-                                        <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-semibold" title={prov.razonSocial}>
-                                          <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
-                                          <span className="truncate max-w-[190px]">
-                                            {prov.razonSocial}
-                                          </span>
-                                        </div>
-                                      ) : m.centroCosto ? (
-                                        <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                                          <Tag className="h-3 w-3 text-slate-400 shrink-0" />
-                                          <span className="truncate max-w-[190px]">{m.centroCosto.nombre}</span>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </td>
-
-                                  {/* Cantidad */}
-                                  <td className="py-3 px-3 text-right whitespace-nowrap">
-                                    <span className={`font-black text-sm ${
-                                      isEntrada ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-                                    }`}>
-                                      {isEntrada ? "+" : "-"}{m.cantidad}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 ml-1 font-bold">
-                                      {productData.unidad || "UND"}
-                                    </span>
-                                  </td>
-
-                                  {/* Valor Unitario Neto */}
-                                  <td className="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                    {valUnit > 0 ? (
-                                      `$${valUnit.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    ) : (
-                                      <span className="text-slate-400">—</span>
-                                    )}
-                                  </td>
-
-                                  {/* Total Neto */}
-                                  <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
-                                    {totalNeto > 0 ? (
-                                      `$${Math.round(totalNeto).toLocaleString("es-CL")}`
-                                    ) : (
-                                      <span className="text-slate-400">—</span>
-                                    )}
-                                  </td>
-
-                                  {/* PPP en Fecha */}
-                                  <td className="py-3 px-3 text-right font-mono font-black text-teal-700 dark:text-teal-300 bg-teal-50/30 dark:bg-teal-950/30 whitespace-nowrap">
-                                    {m.pppCalculado ? (
-                                      `$${m.pppCalculado.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                    ) : (
-                                      <span className="text-slate-400">—</span>
-                                    )}
-                                  </td>
-
-                                  {/* Bodega / Destino */}
-                                  <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400">
-                                    <div className="font-bold text-[11px] text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                                      {m.bodega?.nombre || "Bodega General"}
-                                    </div>
-                                    {m.ubicacion && (
-                                      <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 whitespace-nowrap">
-                                        <MapPin className="h-2.5 w-2.5 text-teal-600 shrink-0" />
-                                        <span>{m.ubicacion.nombre}</span>
-                                      </div>
-                                    )}
-                                    {m.recibidoPor && (
-                                      <div className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-1 font-medium bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md w-fit whitespace-nowrap">
-                                        <span className="text-slate-400 font-bold">Destino:</span>
-                                        <span className="font-semibold text-slate-700 dark:text-slate-200">{m.recibidoPor}</span>
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* Operador */}
-                                  <td className="py-3 px-3.5 text-right pr-4 whitespace-nowrap">
-                                    <div className="flex items-center justify-end gap-1.5 text-slate-700 dark:text-slate-300 text-[11px] font-semibold">
-                                      <User className="h-3 w-3 text-slate-400 shrink-0" />
-                                      <span>{m.usuario?.nombre || "Sistema"}</span>
-                                    </div>
-                                  </td>
+                    return (
+                      <div className="space-y-3">
+                        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[840px]">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-[#0B1326] text-[9.5px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                                  <th className="py-3 px-3.5 pl-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => setMovementsSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                                      className="inline-flex items-center gap-1 hover:text-teal-600 transition-colors uppercase font-black cursor-pointer"
+                                    >
+                                      <span>Fecha & Hora</span>
+                                      <ArrowUpDown className="h-2.5 w-2.5" />
+                                    </button>
+                                  </th>
+                                  <th className="py-3 px-3.5">Documento & Origen</th>
+                                  <th className="py-3 px-3 text-right">Cantidad</th>
+                                  <th className="py-3 px-3 text-right">Valor Unit. Neto</th>
+                                  <th className="py-3 px-3 text-right">Total Neto</th>
+                                  <th className="py-3 px-3 text-right">PPP en Fecha</th>
+                                  <th className="py-3 px-3.5">Bodega / Destino</th>
+                                  <th className="py-3 px-3.5 text-right pr-4">Operador</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                                {paginatedMovimientos.map((m: any) => {
+                                  const isEntrada = m.tipoMovimiento?.esEntrada ?? true;
+                                  const prov = m.proveedor || m.documentoMovimiento?.proveedor;
+                                  const valUnit = m.valorUnitario || 0;
+                                  const totalNeto = valUnit * m.cantidad;
+
+                                  return (
+                                    <tr key={m.id} className="hover:bg-teal-50/40 dark:hover:bg-slate-800/50 transition-colors">
+                                      {/* Fecha & Tipo */}
+                                      <td className="py-3 px-3.5 pl-4">
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex flex-col">
+                                            <span className="text-[11.5px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap" suppressHydrationWarning>
+                                              {new Date(m.fecha).toLocaleDateString("es-CL", {
+                                                day: "2-digit",
+                                                month: "2-digit",
+                                                year: "numeric"
+                                              })}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1" suppressHydrationWarning>
+                                              <Clock className="h-2.5 w-2.5" />
+                                              {new Date(m.fecha).toLocaleTimeString("es-CL", {
+                                                hour: "2-digit",
+                                                minute: "2-digit"
+                                              })}
+                                            </span>
+                                          </div>
+                                          <span className={`inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-md text-[9px] font-black border tracking-wide uppercase ${
+                                            isEntrada
+                                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800"
+                                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800"
+                                          }`}>
+                                            {m.tipoMovimiento?.nombre || (isEntrada ? "Ingreso" : "Egreso")}
+                                          </span>
+                                        </div>
+                                      </td>
+
+                                      {/* Documento & Proveedor */}
+                                      <td className="py-3 px-3.5">
+                                        <div className="space-y-1">
+                                          {m.documentoNumero ? (
+                                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                              {m.documentoTipo === "GUIA_DESPACHO" ? (
+                                                <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800">
+                                                  GUÍA
+                                                </span>
+                                              ) : m.documentoTipo === "SOLICITUD" ? (
+                                                <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+                                                  SOLICITUD
+                                                </span>
+                                              ) : m.documentoTipo === "AJUSTE_RECEPCION" ? (
+                                                <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 rounded border border-rose-200 dark:border-rose-800">
+                                                  MERMA / RECHAZO
+                                                </span>
+                                              ) : (
+                                                <span className="px-1.5 py-0.5 text-[8.5px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 rounded border border-teal-200 dark:border-teal-800">
+                                                  {m.documentoTipo === "FACTURA" ? "FACTURA" : m.documentoTipo || "DOC"}
+                                                </span>
+                                              )}
+                                              <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 text-xs">
+                                                N° {m.documentoNumero}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-slate-400 italic text-[11px]">Sin doc. (Ajuste)</span>
+                                          )}
+
+                                          {prov ? (
+                                            <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-semibold" title={prov.razonSocial}>
+                                              <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                                              <span className="truncate max-w-[190px]">
+                                                {prov.razonSocial}
+                                              </span>
+                                            </div>
+                                          ) : m.centroCosto ? (
+                                            <div className="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                                              <Tag className="h-3 w-3 text-slate-400 shrink-0" />
+                                              <span className="truncate max-w-[190px]">{m.centroCosto.nombre}</span>
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                      </td>
+
+                                      {/* Cantidad */}
+                                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                                        <span className={`font-black text-sm ${
+                                          isEntrada ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                                        }`}>
+                                          {isEntrada ? "+" : "-"}{m.cantidad}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 ml-1 font-bold">
+                                          {productData.unidad || "UND"}
+                                        </span>
+                                      </td>
+
+                                      {/* Valor Unitario Neto */}
+                                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                        {valUnit > 0 ? (
+                                          `$${valUnit.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        ) : (
+                                          <span className="text-slate-400">—</span>
+                                        )}
+                                      </td>
+
+                                      {/* Total Neto */}
+                                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white whitespace-nowrap">
+                                        {totalNeto > 0 ? (
+                                          `$${Math.round(totalNeto).toLocaleString("es-CL")}`
+                                        ) : (
+                                          <span className="text-slate-400">—</span>
+                                        )}
+                                      </td>
+
+                                      {/* PPP en Fecha */}
+                                      <td className="py-3 px-3 text-right font-mono font-black text-teal-700 dark:text-teal-300 bg-teal-50/30 dark:bg-teal-950/30 whitespace-nowrap">
+                                        {m.pppCalculado ? (
+                                          `$${m.pppCalculado.toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        ) : (
+                                          <span className="text-slate-400">—</span>
+                                        )}
+                                      </td>
+
+                                      {/* Bodega / Destino */}
+                                      <td className="py-3 px-3.5 text-slate-600 dark:text-slate-400">
+                                        <div className="font-bold text-[11px] text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                                          {m.bodega?.nombre || "Bodega General"}
+                                        </div>
+                                        {m.ubicacion && (
+                                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                                            <MapPin className="h-2.5 w-2.5 text-teal-600 shrink-0" />
+                                            <span>{m.ubicacion.nombre}</span>
+                                          </div>
+                                        )}
+                                        {m.recibidoPor && (
+                                          <div className="text-[10px] text-slate-600 dark:text-slate-300 flex items-center gap-1 mt-1 font-medium bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md w-fit whitespace-nowrap">
+                                            <span className="text-slate-400 font-bold">Destino:</span>
+                                            <span className="font-semibold text-slate-700 dark:text-slate-200">{m.recibidoPor}</span>
+                                          </div>
+                                        )}
+                                      </td>
+
+                                      {/* Operador */}
+                                      <td className="py-3 px-3.5 text-right pr-4 whitespace-nowrap">
+                                        <div className="flex items-center justify-end gap-1.5 text-slate-700 dark:text-slate-300 text-[11px] font-semibold">
+                                          <User className="h-3 w-3 text-slate-400 shrink-0" />
+                                          <span>{m.usuario?.nombre || "Sistema"}</span>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Barra de Paginación de 4 elementos */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-2 py-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                              Mostrando <strong className="font-bold text-slate-700 dark:text-slate-200">{startIndex + 1}</strong> a <strong className="font-bold text-slate-700 dark:text-slate-200">{Math.min(startIndex + MOVEMENTS_PER_PAGE, totalMovs)}</strong> de <strong className="font-bold text-slate-700 dark:text-slate-200">{totalMovs}</strong> transacciones
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={currentPage === 1}
+                                onClick={() => setMovementsPage(prev => Math.max(1, prev - 1))}
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <ChevronLeft className="h-3.5 w-3.5" />
+                                <span>Anterior</span>
+                              </button>
+
+                              <span className="px-3 py-1 text-xs font-black rounded-lg bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-[#227262] dark:text-teal-300">
+                                {currentPage} / {totalPages}
+                              </span>
+
+                              <button
+                                type="button"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setMovementsPage(prev => Math.min(totalPages, prev + 1))}
+                                className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <span>Siguiente</span>
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 

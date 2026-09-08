@@ -31,18 +31,33 @@ export default async function SolicitarPage(props: PageProps) {
           rut: true,
           areaTrabajo: true,
           cargo: true,
-          role: true
+          role: true,
+          sucursales: {
+            select: { id: true, nombre: true }
+          },
+          bodegas: {
+            select: { id: true, nombre: true }
+          }
         }
       })
     : null;
 
-  // Obtener Centros de Costo, Destinos (boxes / áreas registradas) y Productos para el formulario
+  // Obtener Centros de Costo, Sucursales y Destinos físicos
   const centrosCosto = await prisma.centroCosto.findMany({
     orderBy: { nombre: "asc" }
   });
 
-  const destinos = await prisma.destino.findMany({
-    select: { id: true, nombre: true },
+  const sucursales = await prisma.sucursal.findMany({
+    include: {
+      destinos: {
+        orderBy: { nombre: "asc" }
+      }
+    },
+    orderBy: { nombre: "asc" }
+  });
+
+  const rawDestinos = await prisma.destino.findMany({
+    include: { sucursal: { select: { id: true, nombre: true } } },
     orderBy: { nombre: "asc" }
   });
 
@@ -60,7 +75,16 @@ export default async function SolicitarPage(props: PageProps) {
       unidadesPorConsumo: true,
       stocks: {
         select: {
-          cantidad: true
+          cantidad: true,
+          bodega: {
+            select: {
+              id: true,
+              nombre: true,
+              sucursal: {
+                select: { id: true, nombre: true }
+              }
+            }
+          }
         }
       }
     },
@@ -79,6 +103,13 @@ export default async function SolicitarPage(props: PageProps) {
     unidadEnvase: p.unidadEnvase,
     unidadesPorConsumo: p.unidadesPorConsumo,
     stockTotal: p.stocks.reduce((acc, s) => acc + s.cantidad, 0),
+    stocksBySucursal: p.stocks.map(st => ({
+      bodegaId: st.bodega.id,
+      bodegaNombre: st.bodega.nombre,
+      sucursalId: st.bodega.sucursal.id,
+      sucursalNombre: st.bodega.sucursal.nombre,
+      cantidad: st.cantidad
+    }))
   }));
 
   // Obtener solicitudes previas del usuario si está logueado
@@ -390,7 +421,16 @@ export default async function SolicitarPage(props: PageProps) {
         {/* Form Container */}
         <ClientSolicitarForm 
           centrosCosto={centrosCosto} 
-          destinos={destinos}
+          destinos={rawDestinos.map(d => ({
+            id: d.id,
+            nombre: d.nombre,
+            sucursalId: d.sucursalId,
+            sucursalNombre: d.sucursal?.nombre || ""
+          }))}
+          sucursales={sucursales.map(s => ({
+            id: s.id,
+            nombre: s.nombre
+          }))}
           productos={productos} 
           currentUser={dbUser ? {
             id: dbUser.id,
@@ -399,7 +439,9 @@ export default async function SolicitarPage(props: PageProps) {
             rut: dbUser.rut,
             areaTrabajo: dbUser.areaTrabajo,
             cargo: dbUser.cargo,
-            role: dbUser.role
+            role: dbUser.role,
+            sucursales: dbUser.sucursales,
+            bodegas: dbUser.bodegas
           } : (user ? {
             id: user.userId,
             nombre: user.nombre,
@@ -407,7 +449,9 @@ export default async function SolicitarPage(props: PageProps) {
             rut: null,
             areaTrabajo: null,
             cargo: null,
-            role: user.role
+            role: user.role,
+            sucursales: [],
+            bodegas: []
           } : undefined)}
           userSolicitudes={formattedUserSolicitudes}
           initialTab={initialTab}

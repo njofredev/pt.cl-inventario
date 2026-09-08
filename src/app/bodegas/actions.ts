@@ -67,6 +67,11 @@ export async function getSucursalesAction() {
 }
 
 export async function createBodegaAction(formData: FormData) {
+  const permissions = await getUserPermissions();
+  if (permissions?.role !== 'ADMIN') {
+    return { error: "Acceso denegado: Sólo los administradores del sistema pueden crear o agregar nuevas bodegas." };
+  }
+
   const nombre = (formData.get("nombre") as string)?.trim();
   const sucursalId = formData.get("sucursalId") as string;
 
@@ -103,6 +108,11 @@ export async function createBodegaAction(formData: FormData) {
 }
 
 export async function updateBodegaAction(formData: FormData) {
+  const permissions = await getUserPermissions();
+  if (permissions?.role !== 'ADMIN') {
+    return { error: "Acceso denegado: Sólo los administradores pueden modificar bodegas." };
+  }
+
   const id = formData.get("id") as string;
   const nombre = (formData.get("nombre") as string)?.trim();
   const sucursalId = formData.get("sucursalId") as string;
@@ -130,6 +140,11 @@ export async function updateBodegaAction(formData: FormData) {
 }
 
 export async function deleteBodegaAction(id: string) {
+  const permissions = await getUserPermissions();
+  if (permissions?.role !== 'ADMIN') {
+    return { error: "Acceso denegado: Sólo los administradores pueden eliminar bodegas." };
+  }
+
   if (!id) return { error: "ID no válido." };
 
   try {

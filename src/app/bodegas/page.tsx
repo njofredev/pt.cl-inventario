@@ -1,9 +1,13 @@
 import { getBodegasAction, getSucursalesAction } from "./actions";
 import BodegasClient from "./BodegasClient";
+import { getUserPermissions } from "@/lib/permissions";
 
 export const revalidate = 0;
 
 export default async function BodegasPage() {
+  const permissions = await getUserPermissions();
+  const isAdmin = permissions?.role === 'ADMIN';
+
   const { bodegas, error: bodegasError } = await getBodegasAction();
   const { sucursales, error: sucursalesError } = await getSucursalesAction();
 
@@ -19,6 +23,7 @@ export default async function BodegasPage() {
     <BodegasClient
       initialBodegas={bodegas || []}
       sucursales={sucursales || []}
+      isAdmin={isAdmin}
     />
   );
 }

@@ -36,7 +36,13 @@ export interface CreateDocumentInput {
 function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
   if (dateStr.includes('T')) return new Date(dateStr);
-  return new Date(`${dateStr}T12:00:00`);
+  
+  // Extraer fecha seleccionada y adjuntar la hora/minuto actual para preservar el orden cronológico del día
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return new Date(`${dateStr}T${hours}:${minutes}:${seconds}`);
 }
 
 export async function createDocumentoMovimiento(input: CreateDocumentInput) {
@@ -173,8 +179,8 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
           }
         }
 
-        // Round to 2 decimals
-        const valorUnitarioFinal = Math.round(valorUnitarioValuacion * 100) / 100;
+        // Preserve exact decimal precision for valuation and stock unit value
+        const valorUnitarioFinal = valorUnitarioValuacion;
 
         // Resolve or fallback Ubicacion if not explicitly set
         let finalUbicacionId = item.ubicacionId;

@@ -132,6 +132,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
     ).slice(0, 5);
 
   // Helper calculations for line item subtotal using document-level tax settings
+  // NOTA: Se preservan los decimales exactos por producto y se redondea ÚNICAMENTE la suma total del desglose.
   const calculateItemSubtotal = (item: typeof items[0]) => {
     const cant = parseFloat(item.cantidad) || 0;
     const precio = parseFloat(item.precioUnitario) || 0;
@@ -143,12 +144,14 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
     if (headerEsAfecto && !headerIncluyeIva) {
       subtotalFinal = subtotalFinal * 1.19;
     }
-    return Math.round(subtotalFinal);
+    return subtotalFinal;
   };
 
-  const totalCalculadoDesglose = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
-  const montoDocumentoNum = parseFloat(montoTotal) || 0;
+  const totalCalculadoDesgloseExact = items.reduce((sum, item) => sum + calculateItemSubtotal(item), 0);
+  const totalCalculadoDesglose = Math.round(totalCalculadoDesgloseExact);
+  const montoDocumentoNum = Math.round(parseFloat(montoTotal) || 0);
   const diferenciaCuadre = montoDocumentoNum - totalCalculadoDesglose;
+  const isDocumentoCuadrado = montoDocumentoNum > 0 && Math.abs(diferenciaCuadre) <= 1; // Permite tolerancia por redondeo de pesos (<= $1)
 
   const addItemRow = () => {
     setItems(prev => [
@@ -203,6 +206,22 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       }
       if ((parseInt(item.cantidad) || 0) <= 0) {
         setStatus({ success: false, message: `Ingresa una cantidad mayor a 0 en la fila #${i + 1}.` });
+        return;
+      }
+    }
+
+    // Validate that document total and rounded items sum square
+    if (montoDocumentoNum > 0 && Math.abs(diferenciaCuadre) > 1) {
+      const confirmSubmit = confirm(
+        `Atención: El total ingresado del documento ($${montoDocumentoNum.toLocaleString('es-CL')}) no coincide con la suma redondeada de los productos ($${totalCalculadoDesglose.toLocaleString('es-CL')}).\n` +
+        `Existe una diferencia de $${Math.abs(diferenciaCuadre).toLocaleString('es-CL')}.\n\n` +
+        `¿Deseas registrar el documento de todas formas?`
+      );
+      if (!confirmSubmit) {
+        setStatus({
+          success: false,
+          message: `El total del documento ($${montoDocumentoNum.toLocaleString('es-CL')}) no cuadra con el detalle ingresado ($${totalCalculadoDesglose.toLocaleString('es-CL')}). Revisa las cantidades o precios unitarios.`
+        });
         return;
       }
     }
@@ -564,10 +583,10 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
 
                     {/* Autocomplete list for item */}
                     {activeItemSearchIndex === idx && (
-                      <div className="absolute z-40 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="absolute z-50 left-0 w-full min-w-[340px] sm:min-w-[480px] lg:min-w-[560px] max-w-[92vw] mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in slide-in-from-top-1 duration-150">
                         {filteredItemProducts.length > 0 ? (
                           <>
-                            <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                            <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                               {filteredItemProducts.map(p => (
                                 <div
                                   key={p.id}
@@ -578,12 +597,18 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
                                     });
                                     setActiveItemSearchIndex(null);
                                   }}
-                                  className="p-2.5 text-xs hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex justify-between items-center transition-colors"
+                                  className="p-3 text-xs hover:bg-teal-50 dark:hover:bg-slate-800 cursor-pointer font-medium text-slate-800 dark:text-slate-200 flex items-start justify-between gap-3 transition-colors"
                                 >
-                                  <span className="font-mono text-teal-600 dark:text-teal-400 font-bold">[{p.codigo}]</span>
-                                  <span className="truncate text-slate-700 dark:text-slate-200 ml-2 font-bold flex-1">{p.nombre}</span>
+                                  <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 flex-1 min-w-0">
+                                    <span className="font-mono text-teal-600 dark:text-teal-400 font-bold shrink-0">
+                                      [{p.codigo}]
+                                    </span>
+                                    <span className="text-slate-800 dark:text-slate-100 font-bold break-words whitespace-normal leading-relaxed">
+                                      {p.nombre}
+                                    </span>
+                                  </div>
                                   {p.unidad && (
-                                    <span className="text-[9px] font-extrabold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0 ml-1">
+                                    <span className="text-[9px] font-extrabold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md shrink-0 border border-slate-200 dark:border-slate-700">
                                       {p.unidad}
                                     </span>
                                   )}
@@ -659,7 +684,10 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
                       Subtotal {headerEsAfecto ? 'con IVA' : 'Exento'}
                     </label>
                     <p className="text-xs font-black text-slate-800 dark:text-slate-100 font-mono py-1.5">
-                      ${itemSubtotal.toLocaleString('es-CL')}
+                      ${itemSubtotal.toLocaleString('es-CL', {
+                        minimumFractionDigits: itemSubtotal % 1 === 0 ? 0 : 2,
+                        maximumFractionDigits: 2
+                      })}
                     </p>
                   </div>
                 </div>
@@ -688,15 +716,25 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               <span>Total Documento: ${montoDocumentoNum.toLocaleString('es-CL')}</span>
             </div>
 
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-              <span>Suma Desglose: ${totalCalculadoDesglose.toLocaleString('es-CL')}</span>
+            <div className="flex flex-col sm:items-start text-slate-700 dark:text-slate-200">
+              <span className="font-bold">
+                Suma Desglose: ${totalCalculadoDesgloseExact.toLocaleString('es-CL', {
+                  minimumFractionDigits: totalCalculadoDesgloseExact % 1 === 0 ? 0 : 2,
+                  maximumFractionDigits: 2
+                })}
+              </span>
+              {totalCalculadoDesgloseExact % 1 !== 0 && (
+                <span className="text-[10px] font-semibold text-slate-400">
+                  (Redondeado factura: ${totalCalculadoDesglose.toLocaleString('es-CL')})
+                </span>
+              )}
             </div>
 
-            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${diferenciaCuadre === 0 && montoDocumentoNum > 0
+            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${isDocumentoCuadrado
                 ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
                 : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300'
               }`}>
-              {diferenciaCuadre === 0 && montoDocumentoNum > 0 ? (
+              {isDocumentoCuadrado ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   <span>Documento Cuadrado</span>
