@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createUserAction, updateUserAction, deleteUserAction } from "./actions";
-import { UserCog, ShieldCheck, User, UserPlus, Pencil, Trash2, X, Save, Building2, Warehouse, ShoppingCart, Search, Filter, ClipboardList } from "lucide-react";
+import { UserCog, ShieldCheck, User, UserPlus, Pencil, Trash2, X, Save, Building2, Warehouse, ShoppingCart, Search, Filter, ClipboardList, Briefcase, MapPin, IdCard } from "lucide-react";
 
 interface Sucursal {
   id: string;
@@ -23,6 +23,9 @@ interface DbUser {
   username: string;
   nombre: string;
   role: string;
+  cargo?: string | null;
+  areaTrabajo?: string | null;
+  rut?: string | null;
   createdAt: Date;
   sucursales: Sucursal[];
   bodegas: Bodega[];
@@ -43,6 +46,9 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
   const [role, setRole] = useState("USER");
+  const [cargo, setCargo] = useState("");
+  const [areaTrabajo, setAreaTrabajo] = useState("");
+  const [rut, setRut] = useState("");
   const [selectedSucursales, setSelectedSucursales] = useState<string[]>([]);
   const [selectedBodegas, setSelectedBodegas] = useState<string[]>([]);
 
@@ -55,6 +61,9 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
     setPassword("");
     setNombre("");
     setRole("USER");
+    setCargo("");
+    setAreaTrabajo("");
+    setRut("");
     setSelectedSucursales([]);
     setSelectedBodegas([]);
     setEditingUser(null);
@@ -67,6 +76,9 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
     setUsername(user.username);
     setNombre(user.nombre);
     setRole(user.role);
+    setCargo(user.cargo || "");
+    setAreaTrabajo(user.areaTrabajo || "");
+    setRut(user.rut || "");
     setSelectedSucursales(user.sucursales.map(s => s.id));
     setSelectedBodegas(user.bodegas.map(b => b.id));
     setPassword(""); // Leave blank, only fill if they want to change it
@@ -128,6 +140,9 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
       formData.append("password", password);
       formData.append("nombre", nombre);
       formData.append("role", role);
+      formData.append("cargo", cargo);
+      formData.append("areaTrabajo", areaTrabajo);
+      formData.append("rut", rut);
       formData.append("sucursalesIds", JSON.stringify(selectedSucursales));
       formData.append("bodegasIds", JSON.stringify(selectedBodegas));
 
@@ -143,6 +158,9 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
               username, 
               nombre, 
               role,
+              cargo: cargo.trim() || null,
+              areaTrabajo: areaTrabajo.trim() || null,
+              rut: rut.trim() || null,
               sucursales: sucursales.filter(s => selectedSucursales.includes(s.id)),
               bodegas: bodegas.filter(b => selectedBodegas.includes(b.id))
             } : u))
@@ -197,7 +215,13 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
 
     if (searchUser.trim()) {
       const q = searchUser.toLowerCase();
-      return u.nombre.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
+      return (
+        u.nombre.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        (u.cargo && u.cargo.toLowerCase().includes(q)) ||
+        (u.areaTrabajo && u.areaTrabajo.toLowerCase().includes(q)) ||
+        (u.rut && u.rut.toLowerCase().includes(q))
+      );
     }
 
     return true;
@@ -209,7 +233,7 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       {/* User Form Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 lg:sticky lg:top-6">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <UserCog className="h-5 w-5 text-teal-600" />
@@ -302,6 +326,53 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
               {role === 'ADMIN' && 'Acceso irrestricto a todos los módulos, parámetros, usuarios y bodegas.'}
               {role === 'CONTABLE' && 'Acceso a balances, reportes, precios y bitácoras valorizadas.'}
             </p>
+          </div>
+
+          {/* Cargo & Área de Trabajo & RUT */}
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Cargo */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                  <Briefcase className="h-3 w-3 text-teal-600 dark:text-teal-400" /> Cargo / Puesto
+                </label>
+                <input
+                  type="text"
+                  value={cargo}
+                  onChange={(e) => setCargo(e.target.value)}
+                  placeholder="Ej. Odontólogo, Asistente..."
+                  className="w-full px-3.5 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                />
+              </div>
+
+              {/* Área de Trabajo */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-teal-600 dark:text-teal-400" /> Área / Box
+                </label>
+                <input
+                  type="text"
+                  value={areaTrabajo}
+                  onChange={(e) => setAreaTrabajo(e.target.value)}
+                  placeholder="Ej. Box dental 2, Esterilización..."
+                  className="w-full px-3.5 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                />
+              </div>
+            </div>
+
+            {/* RUT */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                <IdCard className="h-3 w-3 text-teal-600 dark:text-teal-400" /> RUT (Opcional)
+              </label>
+              <input
+                type="text"
+                value={rut}
+                onChange={(e) => setRut(e.target.value)}
+                placeholder="Ej. 12.345.678-9"
+                className="w-full px-3.5 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+              />
+            </div>
           </div>
 
           {/* Permisos de Sucursal */}
@@ -471,121 +542,168 @@ export default function UserManagementClient({ initialUsers, sucursales, bodegas
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
             <thead>
-              <tr className="bg-slate-50/50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
-                <th className="p-3 pl-5">Nombre</th>
-                <th className="p-3">Usuario</th>
-                <th className="p-3">Rol</th>
-                <th className="p-3">Asignaciones</th>
-                <th className="p-3">Fecha Registro</th>
-                <th className="p-3 text-right pr-5">Acciones</th>
+              <tr className="bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-4 w-[34%]">Usuario / Profesional</th>
+                <th className="py-3 px-3 w-[15%]">Rol</th>
+                <th className="py-3 px-3 w-[26%]">Asignaciones</th>
+                <th className="py-3 px-3 w-[13%]">Registro</th>
+                <th className="py-3 px-4 w-[12%] text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 text-xs font-medium">
+                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs font-medium">
                     No se encontraron usuarios bajo este filtro.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150 ${editingUser?.id === user.id ? 'bg-teal-500/5 dark:bg-teal-500/10' : ''}`}>
-                    <td className="p-3 font-bold text-slate-800 dark:text-slate-100 pl-5 flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 font-extrabold text-xs flex items-center justify-center shrink-0">
-                        {user.nombre.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="truncate">{user.nombre}</span>
-                    </td>
-                    <td className="p-3 text-slate-500 dark:text-slate-400 font-mono font-medium">{user.username}</td>
-                    <td className="p-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${
-                        user.role === 'ADMIN' 
-                          ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
-                          : user.role === 'CONSUMIDOR'
-                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : user.role === 'CONTABLE'
-                              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                      }`}>
-                        {user.role === 'ADMIN' && (
-                          <>
-                            <ShieldCheck className="h-3 w-3" /> Admin
-                          </>
-                        )}
-                        {user.role === 'CONSUMIDOR' && (
-                          <>
-                            <ShoppingCart className="h-3 w-3" /> Consumidor
-                          </>
-                        )}
-                        {user.role === 'CONTABLE' && (
-                          <>
-                            <Building2 className="h-3 w-3" /> Contable
-                          </>
-                        )}
-                        {user.role !== 'ADMIN' && user.role !== 'CONSUMIDOR' && user.role !== 'CONTABLE' && (
-                          <>
-                            <User className="h-3 w-3" /> Bodeguero
-                          </>
-                        )}
-                      </span>
-                    </td>
-                    <td className="p-3 space-y-1 max-w-[200px]">
-                      {user.sucursales.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {user.sucursales.map(s => (
-                            <span key={s.id} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-0.5" title="Sucursal asignada">
-                              <Building2 className="h-2.5 w-2.5 shrink-0" />
-                              {s.nombre}
-                            </span>
-                          ))}
+                filteredUsers.map((user) => {
+                  const totalBodegas = user.bodegas.length;
+                  const totalSucursales = user.sucursales.length;
+                  const bodegasTooltip = user.bodegas.map(b => `${b.nombre} (${b.sucursal?.nombre || 'General'})`).join(', ');
+                  const sucursalesTooltip = user.sucursales.map(s => s.nombre).join(', ');
+
+                  return (
+                    <tr 
+                      key={user.id} 
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors duration-150 ${
+                        editingUser?.id === user.id ? 'bg-teal-500/5 dark:bg-teal-500/10' : ''
+                      }`}
+                    >
+                      {/* Columna Usuario / Profesional */}
+                      <td className="py-3.5 px-4 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500/15 to-teal-600/25 border border-teal-500/25 text-teal-700 dark:text-teal-300 font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                            {user.nombre.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs truncate max-w-[180px]">
+                                {user.nombre}
+                              </span>
+                              <span className="text-[11px] font-mono text-slate-400">
+                                @{user.username}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                              {user.rut && (
+                                <span className="text-[10px] font-mono text-slate-400 font-medium">
+                                  {user.rut}
+                                </span>
+                              )}
+                              {user.cargo && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+                                  <Briefcase className="h-2.5 w-2.5 text-slate-400" />
+                                  <span className="truncate max-w-[130px]">{user.cargo}</span>
+                                </span>
+                              )}
+                              {user.areaTrabajo && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-1.5 py-0.5 rounded-md border border-teal-100 dark:border-teal-900/50">
+                                  <MapPin className="h-2.5 w-2.5 text-teal-500" />
+                                  <span className="truncate max-w-[130px]">{user.areaTrabajo}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ) : null}
-                      {user.bodegas.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {user.bodegas.map(b => (
-                            <span key={b.id} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-100 dark:border-teal-900/60 flex items-center gap-0.5" title={`Bodega asignada de sucursal: ${b.sucursal?.nombre || ''}`}>
-                              <Warehouse className="h-2.5 w-2.5 shrink-0" />
-                              {b.nombre}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        user.sucursales.length === 0 && (
-                          <span className="text-[10px] text-slate-400 italic">
-                            {user.role === 'CONSUMIDOR' ? 'Portal de Solicitudes' : 'Acceso Total'}
+                      </td>
+
+                      {/* Columna Rol */}
+                      <td className="py-3.5 px-3 align-middle">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border whitespace-nowrap shadow-2xs ${
+                          user.role === 'ADMIN' 
+                            ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/80 dark:border-purple-800' 
+                            : user.role === 'CONSUMIDOR'
+                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800'
+                              : user.role === 'CONTABLE'
+                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800'
+                                : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800'
+                        }`}>
+                          {user.role === 'ADMIN' && <ShieldCheck className="h-3 w-3" />}
+                          {user.role === 'CONSUMIDOR' && <ShoppingCart className="h-3 w-3" />}
+                          {user.role === 'CONTABLE' && <Building2 className="h-3 w-3" />}
+                          {user.role !== 'ADMIN' && user.role !== 'CONSUMIDOR' && user.role !== 'CONTABLE' && <User className="h-3 w-3" />}
+                          
+                          {user.role === 'ADMIN' ? 'Admin' :
+                           user.role === 'CONSUMIDOR' ? 'Consumidor' :
+                           user.role === 'CONTABLE' ? 'Contable' : 'Bodeguero'}
+                        </span>
+                      </td>
+
+                      {/* Columna Asignaciones (Compacta y visual) */}
+                      <td className="py-3.5 px-3 align-middle">
+                        {totalSucursales === 0 && totalBodegas === 0 ? (
+                          <span className="text-[11px] text-slate-400 italic">
+                            {user.role === 'CONSUMIDOR' ? 'Portal de Insumos' : 'Acceso Global'}
                           </span>
-                        )
-                      )}
-                    </td>
-                    <td className="p-3 text-slate-400 font-medium text-[11px]">
-                      {new Date(user.createdAt).toLocaleDateString('es-CL')}
-                    </td>
-                    <td className="p-3 text-right pr-5 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => startEdit(user)}
-                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                            editingUser?.id === user.id 
-                              ? 'bg-teal-500 border-teal-500 text-white' 
-                              : 'border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-500 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
-                          }`}
-                          title="Editar usuario"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.id, user.nombre)}
-                          className="p-1.5 rounded-lg border border-slate-200 hover:border-red-500 dark:border-slate-700 dark:hover:border-red-500 hover:bg-red-50/50 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer"
-                          title="Eliminar usuario"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {/* Sucursales */}
+                            {totalSucursales > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap" title={`Sucursales: ${sucursalesTooltip}`}>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  <Building2 className="h-2.5 w-2.5 text-slate-500" />
+                                  {totalSucursales === 1 
+                                    ? user.sucursales[0].nombre 
+                                    : `${totalSucursales} Sucursales`}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Bodegas */}
+                            {totalBodegas > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap" title={`Bodegas: ${bodegasTooltip}`}>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200/70 dark:border-teal-800/60">
+                                  <Warehouse className="h-2.5 w-2.5 text-teal-600 dark:text-teal-400" />
+                                  {totalBodegas === 1 
+                                    ? user.bodegas[0].nombre 
+                                    : `${totalBodegas} Bodegas autorizadas`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Columna Fecha Registro */}
+                      <td className="py-3.5 px-3 align-middle text-slate-400 font-medium text-[11px] whitespace-nowrap">
+                        {new Date(user.createdAt).toLocaleDateString('es-CL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
+                      </td>
+
+                      {/* Columna Acciones */}
+                      <td className="py-3.5 px-4 align-middle text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => startEdit(user)}
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                              editingUser?.id === user.id 
+                                ? 'bg-teal-500 border-teal-500 text-white shadow-xs' 
+                                : 'border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 dark:border-slate-700 dark:hover:border-teal-500 text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400'
+                            }`}
+                            title="Editar usuario"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id, user.nombre)}
+                            className="p-1.5 rounded-lg border border-slate-200 hover:border-red-500 dark:border-slate-700 dark:hover:border-red-500 hover:bg-red-50/50 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer"
+                            title="Eliminar usuario"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

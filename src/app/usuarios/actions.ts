@@ -9,11 +9,14 @@ export async function createUserAction(formData: FormData) {
   const password = formData.get('password') as string
   const nombre = (formData.get('nombre') as string)?.trim()
   const role = formData.get('role') as string
+  const cargo = (formData.get('cargo') as string)?.trim() || null
+  const areaTrabajo = (formData.get('areaTrabajo') as string)?.trim() || null
+  const rut = (formData.get('rut') as string)?.trim() || null
   const sucursalesIds = JSON.parse(formData.get('sucursalesIds') as string || '[]') as string[]
   const bodegasIds = JSON.parse(formData.get('bodegasIds') as string || '[]') as string[]
 
   if (!username || !password || !nombre || !role) {
-    return { error: "Por favor rellena todos los campos." }
+    return { error: "Por favor rellena todos los campos obligatorios." }
   }
 
   try {
@@ -25,6 +28,15 @@ export async function createUserAction(formData: FormData) {
       return { error: "El nombre de usuario ya está registrado." }
     }
 
+    if (rut) {
+      const existingRut = await prisma.user.findUnique({
+        where: { rut }
+      })
+      if (existingRut) {
+        return { error: "El RUT ingresado ya está asociado a otro usuario." }
+      }
+    }
+
     const hashedPassword = bcrypt.hashSync(password, 10)
 
     await prisma.user.create({
@@ -33,6 +45,9 @@ export async function createUserAction(formData: FormData) {
         password: hashedPassword,
         nombre,
         role,
+        cargo,
+        areaTrabajo,
+        rut,
         sucursales: {
           connect: sucursalesIds.map(id => ({ id }))
         },
@@ -54,6 +69,9 @@ export async function updateUserAction(userId: string, formData: FormData) {
   const password = formData.get('password') as string
   const nombre = (formData.get('nombre') as string)?.trim()
   const role = formData.get('role') as string
+  const cargo = (formData.get('cargo') as string)?.trim() || null
+  const areaTrabajo = (formData.get('areaTrabajo') as string)?.trim() || null
+  const rut = (formData.get('rut') as string)?.trim() || null
   const sucursalesIds = JSON.parse(formData.get('sucursalesIds') as string || '[]') as string[]
   const bodegasIds = JSON.parse(formData.get('bodegasIds') as string || '[]') as string[]
 
@@ -73,10 +91,25 @@ export async function updateUserAction(userId: string, formData: FormData) {
       return { error: "El nombre de usuario ya está registrado por otra cuenta." }
     }
 
+    if (rut) {
+      const existingRut = await prisma.user.findFirst({
+        where: {
+          rut,
+          id: { not: userId }
+        }
+      })
+      if (existingRut) {
+        return { error: "El RUT ingresado ya está asociado a otro usuario." }
+      }
+    }
+
     const dataToUpdate: any = {
       username,
       nombre,
       role,
+      cargo,
+      areaTrabajo,
+      rut,
       sucursales: {
         set: sucursalesIds.map(id => ({ id }))
       },

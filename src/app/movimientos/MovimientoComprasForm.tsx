@@ -391,8 +391,8 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           </div>
         </div>
 
-        {/* Row 3: Destino General (Bodega y Ubicación Físico) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+        {/* Row 3: Destino General (Bodega de Destino General) */}
+        <div className="p-3 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
           <div>
             <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
               <Warehouse className="h-3.5 w-3.5 text-teal-600" />
@@ -405,23 +405,6 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             >
               {bodegas.map(b => (
                 <option key={b.id} value={b.id}>{b.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-1">
-              <MapPin className="h-3.5 w-3.5 text-teal-600" />
-              <span>Ubicación Física (Opcional)</span>
-            </label>
-            <select
-              value={headerUbicacionId}
-              onChange={(e) => setHeaderUbicacionId(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-bold focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
-            >
-              <option value="">General / Por Defecto</option>
-              {(selectedBodegaObj?.ubicaciones || []).map(u => (
-                <option key={u.id} value={u.id}>{u.nombre}</option>
               ))}
             </select>
           </div>

@@ -374,7 +374,11 @@ export default function ClientSolicitarForm({
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
                               sol.estado === "PENDIENTE" ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800" :
                               sol.estado === "DESPACHADA" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800" :
-                              sol.estado === "RECEPCIONADA" ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" :
+                              sol.estado === "RECEPCIONADA" ? (
+                                sol.items.some(it => typeof it.cantidadRecepcionada === "number" && typeof it.cantidadEnviada === "number" && it.cantidadRecepcionada < it.cantidadEnviada)
+                                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                              ) :
                               "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                             }`}>
                               {sol.estado === "PENDIENTE" ? (
@@ -388,10 +392,17 @@ export default function ClientSolicitarForm({
                                   <span>Despachada (En Tránsito)</span>
                                 </>
                               ) : sol.estado === "RECEPCIONADA" ? (
-                                <>
-                                  <PackageCheck className="h-2.5 w-2.5" />
-                                  <span>Recepción Conforme</span>
-                                </>
+                                sol.items.some(it => typeof it.cantidadRecepcionada === "number" && typeof it.cantidadEnviada === "number" && it.cantidadRecepcionada < it.cantidadEnviada) ? (
+                                  <>
+                                    <AlertTriangle className="h-2.5 w-2.5 text-amber-600 dark:text-amber-400" />
+                                    <span>Recepcionado con Diferencia</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <PackageCheck className="h-2.5 w-2.5" />
+                                    <span>Recepción Conforme</span>
+                                  </>
+                                )
                               ) : (
                                 <>
                                   <XCircle className="h-2.5 w-2.5" />

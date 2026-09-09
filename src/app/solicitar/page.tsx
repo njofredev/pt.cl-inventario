@@ -232,29 +232,14 @@ export default async function SolicitarPage(props: PageProps) {
         throw new Error("Solicitud no encontrada.");
       }
 
-      // 2. Buscar TipoMovimiento para ajuste de merma en caso de discrepancia
-      let tipoMovMerma = await tx.tipoMovimiento.findFirst({
-        where: { nombre: "Dada de Baja" }
-      });
-      if (!tipoMovMerma) {
-        tipoMovMerma = await tx.tipoMovimiento.findFirst({
-          where: { nombre: "Ajuste de Salida" }
-        });
-      }
-      if (!tipoMovMerma) {
-        tipoMovMerma = await tx.tipoMovimiento.findFirst({
-          where: { esEntrada: false }
-        });
-      }
-
-      const adminOrSystemUser = await tx.user.findFirst({
-        where: { role: "ADMIN" }
-      });
-
       const year = new Date().getFullYear();
       const productosModificados = new Set<string>();
 
-      // 3. Actualizar cantidades recepcionadas y registrar discrepancias
+      // Buscar si hubo diferencias entre lo enviado y lo recepcionado
+      let totalDiscrepancias = 0;
+      const notasDiscrepancia: string[] = [];
+
+      // 3. Actualizar cantidades recepcionadas y reingresar stock no recibido a bodega
       for (const itemRec of itemsRecepcionados) {
         const cantRec = Math.max(0, itemRec.cantidadRecepcionada || 0);
 
@@ -268,20 +253,15 @@ export default async function SolicitarPage(props: PageProps) {
         const itemDb = currentSol.items.find(it => it.id === itemRec.id);
         if (itemDb) {
           const enviada = itemDb.cantidadEnviada || 0;
-          // Si el consumidor recepcionó menos de lo que bodega envió (merma o daño en tránsito)
-          if (cantRec < enviada && tipoMovMerma) {
-            const diferenciaMerma = enviada - cantRec;
+          
+          // Si el consumidor recepcionó menos de lo que el bodeguero despachó
+          if (cantRec < enviada) {
+            const diferencia = enviada - cantRec;
+            totalDiscrepancias += diferencia;
+            notasDiscrepancia.push(`${itemDb.product.nombre}: Enviado ${enviada}, Recibido ${cantRec} (Faltante: ${diferencia})`);
 
-            const countThisYear = await tx.movimiento.count({
-              where: {
-                tipoMovimiento: { esEntrada: false },
-                fecha: { gte: new Date(`${year}-01-01T00:00:00.000Z`) }
-              }
-            });
-            const correlativoMerma = `MERMA-${year}-${(countThisYear + 1).toString().padStart(5, '0')}`;
-
-            // Buscar último movimiento de salida de este producto para esta solicitud
-            const lastMov = await tx.movimiento.findFirst({
+            // Buscar el movimiento de salida original de esta solicitud para reingresar a la misma bodega/ubicación
+            const movSalida = await tx.movimiento.findFirst({
               where: {
                 productoId: itemDb.productoId,
                 documentoTipo: "SOLICITUD"
@@ -289,37 +269,86 @@ export default async function SolicitarPage(props: PageProps) {
               orderBy: { createdAt: "desc" }
             });
 
-            await tx.movimiento.create({
-              data: {
-                productoId: itemDb.productoId,
-                tipoMovimientoId: tipoMovMerma.id,
-                cantidad: diferenciaMerma,
-                bodegaId: lastMov?.bodegaId || null,
-                ubicacionId: lastMov?.ubicacionId || null,
-                centroCostoId: currentSol.centroCostoId,
-                usuarioId: adminOrSystemUser?.id || "system",
-                recibidoPor: `Discrepancia Recepción: ${currentSol.nombre} (Enviado: ${enviada}, Recibido: ${cantRec})`,
-                documentoTipo: "AJUSTE_RECEPCION",
-                documentoNumero: correlativoMerma,
-                pppCalculado: itemDb.product.ppp || 0,
-                valorUnitario: 0.0
-              }
-            });
+            // Si se encontró la bodega y ubicación de donde se despachó, se devuelve el stock no recibido a la bodega
+            if (movSalida && movSalida.bodegaId && movSalida.ubicacionId) {
+              await tx.stock.update({
+                where: {
+                  productoId_bodegaId_ubicacionId: {
+                    productoId: itemDb.productoId,
+                    bodegaId: movSalida.bodegaId,
+                    ubicacionId: movSalida.ubicacionId
+                  }
+                },
+                data: {
+                  cantidad: {
+                    increment: diferencia
+                  }
+                }
+              });
 
-            productosModificados.add(itemDb.productoId);
+              // Buscar TipoMovimiento para reingreso o devolución (Entrada)
+              let tipoMovReingreso = await tx.tipoMovimiento.findFirst({
+                where: { nombre: "Ajuste de Entrada" }
+              });
+              if (!tipoMovReingreso) {
+                tipoMovReingreso = await tx.tipoMovimiento.findFirst({
+                  where: { esEntrada: true }
+                });
+              }
+
+              if (tipoMovReingreso) {
+                const countThisYear = await tx.movimiento.count({
+                  where: {
+                    tipoMovimiento: { esEntrada: true },
+                    fecha: { gte: new Date(`${year}-01-01T00:00:00.000Z`) }
+                  }
+                });
+                const correlativoReingreso = `REING-${year}-${(countThisYear + 1).toString().padStart(5, '0')}`;
+
+                await tx.movimiento.create({
+                  data: {
+                    productoId: itemDb.productoId,
+                    tipoMovimientoId: tipoMovReingreso.id,
+                    cantidad: diferencia,
+                    bodegaId: movSalida.bodegaId,
+                    ubicacionId: movSalida.ubicacionId,
+                    centroCostoId: currentSol.centroCostoId,
+                    usuarioId: movSalida.usuarioId, // El bodeguero que despachó la solicitud
+                    recibidoPor: `Reintegro por no entrega: ${currentSol.nombre} (Enviado ${enviada}, Recibido ${cantRec})`,
+                    documentoTipo: "AJUSTE_RECEPCION",
+                    documentoNumero: correlativoReingreso,
+                    pppCalculado: itemDb.product.ppp || 0,
+                    valorUnitario: 0.0
+                  }
+                });
+              }
+
+              productosModificados.add(itemDb.productoId);
+            }
           }
         }
       }
 
-      // Recalcular PPP si hubo ajustes
+      // Recalcular PPP si hubo reintegros
       for (const prodId of productosModificados) {
         await recalcularPPPProducto(tx, prodId);
+      }
+
+      // Marcar solicitud como RECEPCIONADA
+      // Si hubo faltantes, agregar nota explicativa en la observación para mantener el feedback transparente
+      let observacionFinal = currentSol.observacionRespuesta || "";
+      if (totalDiscrepancias > 0 && notasDiscrepancia.length > 0) {
+        const detalleDiscrepancia = `[Recepción con diferencia de ${totalDiscrepancias} unid: ${notasDiscrepancia.join("; ")}. El stock no recibido ha sido reintegrado automáticamente a bodega]`;
+        observacionFinal = observacionFinal 
+          ? `${observacionFinal}\n${detalleDiscrepancia}`
+          : detalleDiscrepancia;
       }
 
       await tx.solicitud.update({
         where: { id: solicitudId },
         data: {
-          estado: "RECEPCIONADA"
+          estado: "RECEPCIONADA",
+          observacionRespuesta: observacionFinal || null
         }
       });
     });

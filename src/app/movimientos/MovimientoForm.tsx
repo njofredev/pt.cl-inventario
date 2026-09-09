@@ -343,10 +343,10 @@ export default function MovimientoForm({ products, bodegas, destinos = [], consu
       )}
 
       {/* Bodega y Ubicación (cabecera compartida para el movimiento o lote) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/70">
+      <div className={`grid ${!esEntrada ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/70`}>
         <div className="space-y-1">
           <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-            Bodega de Origen *
+            {esEntrada ? 'Bodega de Destino *' : 'Bodega de Origen *'}
           </label>
           <select
             required
@@ -361,22 +361,24 @@ export default function MovimientoForm({ products, bodegas, destinos = [], consu
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-            Ubicación Física (Opcional)
-          </label>
-          <select
-            disabled={!bodegaId}
-            value={ubicacionId}
-            onChange={(e) => setUbicacionId(e.target.value)}
-            className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 font-medium"
-          >
-            <option value="">General / Por Defecto</option>
-            {locations.map(u => (
-              <option key={u.id} value={u.id}>{u.nombre}</option>
-            ))}
-          </select>
-        </div>
+        {!esEntrada && (
+          <div className="space-y-1">
+            <label className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Ubicación Física (Opcional)
+            </label>
+            <select
+              disabled={!bodegaId}
+              value={ubicacionId}
+              onChange={(e) => setUbicacionId(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 font-medium"
+            >
+              <option value="">General / Por Defecto</option>
+              {locations.map(u => (
+                <option key={u.id} value={u.id}>{u.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Destino y Receptor en Egreso */}
