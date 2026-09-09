@@ -336,7 +336,7 @@ export default function ClientSolicitudesList({ solicitudes, currentUser, update
                               3. Recepcionado por Consumidor
                             </th>
                             <th className="py-2.5 px-2.5 text-center w-24">
-                              4. Saldo Entrada
+                              4. Saldo por Recibir
                             </th>
                             <th className="py-2.5 px-2.5 text-center w-24">
                               5. Saldo Solicitud
@@ -349,14 +349,17 @@ export default function ClientSolicitudesList({ solicitudes, currentUser, update
                             const enviado = item.cantidadEnviada;
                             const recepcionado = item.cantidadRecepcionada;
 
-                            // 4. Saldo por Entrada: Enviado - Recepcionado (si ya se recepcionó)
-                            const saldoEntrada = (enviado !== null && recepcionado !== null) 
+                            // 4. Saldo por Recibir: col 2 - col 3 (Insumo Enviado - Recepcionado por Consumidor)
+                            const saldoPorRecibir = (enviado !== null && recepcionado !== null) 
                               ? enviado - recepcionado 
                               : null;
 
-                            // 5. Saldo por Solicitud: Solicitado - Enviado (lo que quedó pendiente de entrega)
-                            const saldoSolicitud = enviado !== null 
-                              ? solicitado - enviado 
+                            // 5. Saldo Solicitud: col 1 - col 3 (Insumo Solicitado - Recepcionado por Consumidor)
+                            // Si aún no se recepciona pero ya se envió, o está pendiente, mostramos el saldo respecto a lo recibido o enviado
+                            const saldoSolicitud = recepcionado !== null
+                              ? solicitado - recepcionado
+                              : enviado !== null
+                              ? solicitado - enviado
                               : null;
 
                             return (
@@ -407,22 +410,22 @@ export default function ClientSolicitudesList({ solicitudes, currentUser, update
                                   )}
                                 </td>
 
-                                {/* 4. Saldo por Entrada (Diferencia de Recepción) */}
+                                {/* 4. Saldo por Recibir (col 2 - col 3) */}
                                 <td className="py-2.5 px-2.5 text-center font-mono font-black">
-                                  {saldoEntrada !== null ? (
+                                  {saldoPorRecibir !== null ? (
                                     <span className={`px-2 py-0.5 rounded-md ${
-                                      saldoEntrada === 0 
+                                      saldoPorRecibir === 0 
                                         ? "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800" 
                                         : "text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70"
                                     }`}>
-                                      {saldoEntrada > 0 ? `+${saldoEntrada}` : saldoEntrada}
+                                      {saldoPorRecibir > 0 ? `+${saldoPorRecibir}` : saldoPorRecibir}
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 font-normal">-</span>
                                   )}
                                 </td>
 
-                                {/* 5. Saldo por Solicitud (Pendiente de Despacho) */}
+                                {/* 5. Saldo Solicitud (col 1 - col 3) */}
                                 <td className="py-2.5 px-2.5 text-center font-mono font-black">
                                   {saldoSolicitud !== null ? (
                                     <span className={`px-2 py-0.5 rounded-md ${

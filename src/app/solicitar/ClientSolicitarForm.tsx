@@ -461,7 +461,7 @@ export default function ClientSolicitarForm({
                                     3. Recepcionado
                                   </th>
                                   <th className="py-2 px-2 text-center w-24">
-                                    4. Saldo Recepción
+                                    4. Saldo por Recibir
                                   </th>
                                   <th className="py-2 px-2 text-center w-24">
                                     5. Saldo Solicitud
@@ -482,17 +482,18 @@ export default function ClientSolicitarForm({
                                     ? it.cantidadRecepcionada.toString()
                                     : "";
 
+                                  const hasRecepcionadoVal = currentVal !== "";
                                   const numRecepcionado = parseInt(currentVal) || 0;
 
-                                  // 4. Saldo por Recepción: Enviado - Recepcionado
-                                  const saldoRecepcion = enviada !== null && enviada !== undefined
-                                    ? (currentVal !== "" ? enviada - numRecepcionado : null)
+                                  // 4. Saldo por Recibir: col 2 - col 3 (Enviado - Recepcionado)
+                                  const saldoPorRecibir = enviada !== null && enviada !== undefined
+                                    ? (hasRecepcionadoVal ? enviada - numRecepcionado : null)
                                     : null;
 
-                                  // 5. Saldo de Solicitud: Solicitada - Enviada (lo que bodega debió entregar y no envió)
-                                  const saldoSolicitud = enviada !== null && enviada !== undefined
-                                    ? solicitada - enviada
-                                    : null;
+                                  // 5. Saldo Solicitud: col 1 - col 3 (Solicitado - Recepcionado)
+                                  const saldoSolicitud = hasRecepcionadoVal
+                                    ? solicitada - numRecepcionado
+                                    : (enviada !== null && enviada !== undefined ? solicitada - enviada : null);
 
                                   return (
                                     <tr key={it.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
@@ -550,15 +551,15 @@ export default function ClientSolicitarForm({
                                         )}
                                       </td>
 
-                                      {/* 4. Saldo por Recepción */}
+                                      {/* 4. Saldo por Recibir */}
                                       <td className="py-2 px-2 text-center font-mono font-black">
-                                        {saldoRecepcion !== null ? (
+                                        {saldoPorRecibir !== null ? (
                                           <span className={`px-2 py-0.5 rounded-md ${
-                                            saldoRecepcion === 0 
+                                            saldoPorRecibir === 0 
                                               ? "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800" 
                                               : "text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70"
                                           }`}>
-                                            {saldoRecepcion > 0 ? `+${saldoRecepcion}` : saldoRecepcion}
+                                            {saldoPorRecibir > 0 ? `+${saldoPorRecibir}` : saldoPorRecibir}
                                           </span>
                                         ) : (
                                           <span className="text-slate-400 font-normal">-</span>
