@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, Database, Search, X, Loader2, ArrowRight, ChevronsUpDown } from "lucide-react";
+import { Eye, Database, Search, X, Loader2, ArrowRight, ChevronsUpDown, Plus, Package } from "lucide-react";
 import ProductDetailModal from "./ProductDetailModal";
+import ProductForm from "./ProductForm";
 
 interface ProductWithStock {
   id: string;
@@ -39,6 +40,7 @@ export default function ClientProductsList({
 }: ClientProductsListProps) {
   const router = useRouter();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
   const [query, setQuery] = useState(search);
   const [suggestions, setSuggestions] = useState<ProductWithStock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -230,9 +232,18 @@ export default function ClientProductsList({
 
           <button
             type="submit"
-            className="px-5 py-2.5 bg-slate-900 dark:bg-teal-600 hover:bg-black dark:hover:bg-teal-500 text-white font-extrabold rounded-xl text-xs transition-all active-scale-down shadow-sm cursor-pointer"
+            className="px-5 py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-700 text-white font-extrabold rounded-xl text-xs transition-all active-scale-down shadow-sm cursor-pointer"
           >
             Buscar
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsNewProductModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#162158] hover:bg-[#0f173d] dark:bg-teal-600 dark:hover:bg-teal-500 text-white text-xs font-extrabold rounded-xl transition-all shadow-sm active-scale-down cursor-pointer shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nuevo Producto</span>
           </button>
         </form>
       </div>
@@ -406,6 +417,27 @@ export default function ClientProductsList({
           unidadesMedida={unidadesMedida}
           onClose={() => setSelectedProductId(null)}
         />
+      )}
+
+      {/* New Product Modal */}
+      {isNewProductModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+          >
+            <ProductForm
+              cuentasContables={cuentasContables}
+              unidadesMedida={unidadesMedida}
+              onClose={() => setIsNewProductModalOpen(false)}
+              onCreated={() => {
+                setIsNewProductModalOpen(false);
+                router.refresh();
+              }}
+            />
+          </div>
+        </div>
       )}
     </>
   );

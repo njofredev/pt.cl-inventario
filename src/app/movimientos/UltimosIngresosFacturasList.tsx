@@ -199,9 +199,9 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
             const sumSubtotalesExact = doc.items.reduce((acc, it) => acc + it.subtotal, 0);
             const sumSubtotalesRedondeado = Math.round(sumSubtotalesExact);
             const sumPrecioUnitario = doc.items.reduce((acc, it) => acc + it.precioUnitario, 0);
-            const sumUnitarioNeto = doc.items.reduce((acc, it) => {
-              const neto = it.esAfecto ? it.precioUnitario / 1.19 : it.precioUnitario;
-              return acc + neto;
+            const sumUnitarioBruto = doc.items.reduce((acc, it) => {
+              const unitBruto = it.cantidad > 0 ? it.subtotal / it.cantidad : (it.esAfecto ? it.precioUnitario * 1.19 : it.precioUnitario);
+              return acc + unitBruto;
             }, 0);
             const bodegaDestino = doc.movimientos?.[0]?.bodega?.nombre || 'Bodega Principal';
             const usuarioOperador = doc.movimientos?.[0]?.usuario?.nombre || 'Operador';
@@ -316,18 +316,18 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
                               <th className="py-2.5 px-3">Producto / Insumo</th>
                               <th className="py-2.5 px-3 text-center min-w-[110px]">Cantidad</th>
                               <th className="py-2.5 px-3 text-right w-28">Precio Unit.</th>
-                              <th className="py-2.5 px-3 text-right w-28 text-emerald-700 dark:text-emerald-400">Unit. Neto</th>
+                              <th className="py-2.5 px-3 text-right w-28 text-emerald-700 dark:text-emerald-400">Unit. Bruto</th>
                               <th className="py-2.5 px-3 text-center w-24">Tratamiento</th>
                               <th className="py-2.5 px-3 text-right w-28">Subtotal</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
                             {doc.items.map((item, idx) => {
-                              // Valor unitario neto (restando el IVA):
-                              // Si el producto es afecto (19%), se le resta el IVA dividiendo por 1.19. Si es exento, se mantiene igual.
-                              const valorUnitarioNeto = item.esAfecto 
-                                ? item.precioUnitario / 1.19 
-                                : item.precioUnitario;
+                              // Valor unitario bruto (con IVA incluido):
+                              // Corresponde al subtotal dividido por la cantidad (es decir, precioUnitario * 1.19 si es afecto).
+                              const valorUnitarioBruto = item.cantidad > 0 
+                                ? item.subtotal / item.cantidad 
+                                : (item.esAfecto ? item.precioUnitario * 1.19 : item.precioUnitario);
 
                               return (
                                 <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
@@ -346,8 +346,8 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
                                     ${item.precioUnitario.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </td>
                                   <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                                    ${valorUnitarioNeto.toLocaleString('es-CL', {
-                                      minimumFractionDigits: valorUnitarioNeto % 1 === 0 ? 0 : 2,
+                                    ${valorUnitarioBruto.toLocaleString('es-CL', {
+                                      minimumFractionDigits: valorUnitarioBruto % 1 === 0 ? 0 : 2,
                                       maximumFractionDigits: 2
                                     })}
                                   </td>
@@ -385,7 +385,7 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
                                 })}
                               </td>
                               <td className="py-2.5 px-3 text-right font-mono text-xs font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                                ${sumUnitarioNeto.toLocaleString('es-CL', {
+                                ${sumUnitarioBruto.toLocaleString('es-CL', {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2
                                 })}

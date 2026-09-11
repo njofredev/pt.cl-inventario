@@ -32,7 +32,9 @@ import {
   Sliders,
   FolderTree,
   Bell,
-  Check
+  Check,
+  ChevronsDownUp,
+  ChevronsUpDown
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -41,6 +43,27 @@ import GlobalSearchModal from "@/components/GlobalSearchModal";
 interface SidebarProps {
   user: JWTPayload;
   logoutAction: () => Promise<void>;
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  roles: string[];
+  badge?: string;
+  badgeColor?: string;
+}
+
+interface NavSubsection {
+  label?: string;
+  items: NavItem[];
+}
+
+interface NavGroup {
+  id: string;
+  title: string;
+  icon: any;
+  subsections: NavSubsection[];
 }
 
 export default function Sidebar({ user, logoutAction }: SidebarProps) {
@@ -55,6 +78,61 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
 
   // Search Modal State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Accordion state for collapsible navigation categories (Click-only toggle)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    // Determine initially active category using Next.js pathname (consistent between SSR & hydration)
+    const currentPath = pathname || '';
+    return {
+      stock: currentPath.startsWith('/productos') || currentPath.startsWith('/solicitudes') || currentPath.startsWith('/solicitar'),
+      movimientos: currentPath.startsWith('/movimientos'),
+      configuracion: currentPath.startsWith('/bodegas') || currentPath.startsWith('/destinos') || currentPath.startsWith('/proveedores') || currentPath.startsWith('/unidades'),
+      sistema: currentPath.startsWith('/usuarios') || currentPath.startsWith('/configuracion') || currentPath.startsWith('/novedades'),
+    };
+  });
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
+
+  const isAnyGroupOpen = Object.values(openGroups).some(Boolean);
+
+  const toggleAllGroups = () => {
+    if (isAnyGroupOpen) {
+      // Collapse all
+      setOpenGroups({
+        stock: false,
+        movimientos: false,
+        configuracion: false,
+        sistema: false,
+      });
+    } else {
+      // Expand all
+      setOpenGroups({
+        stock: true,
+        movimientos: true,
+        configuracion: true,
+        sistema: true,
+      });
+    }
+  };
+
+  // Keep the category of the active page open automatically
+  useEffect(() => {
+    if (!pathname) return;
+    if (pathname.startsWith('/productos') || pathname.startsWith('/solicitudes') || pathname.startsWith('/solicitar')) {
+      setOpenGroups(prev => ({ ...prev, stock: true }));
+    } else if (pathname.startsWith('/movimientos')) {
+      setOpenGroups(prev => ({ ...prev, movimientos: true }));
+    } else if (pathname.startsWith('/bodegas') || pathname.startsWith('/destinos') || pathname.startsWith('/proveedores') || pathname.startsWith('/unidades')) {
+      setOpenGroups(prev => ({ ...prev, configuracion: true }));
+    } else if (pathname.startsWith('/usuarios') || pathname.startsWith('/configuracion') || pathname.startsWith('/novedades')) {
+      setOpenGroups(prev => ({ ...prev, sistema: true }));
+    }
+  }, [pathname]);
 
   // Solicitudes Pendientes Count & Resumen (Notificación en vivo)
   const [pendientesCount, setPendientesCount] = useState<number>(0);
@@ -219,9 +297,11 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
     roles: ["ADMIN", "OPERADOR", "CONTABLE"],
   };
 
-  const navGroups = [
+  const navGroups: NavGroup[] = [
     {
-      title: "GESTIÓN DE STOCK",
+      id: "stock",
+      title: "Gestión de Stock",
+      icon: Package,
       subsections: [
         {
           items: [
@@ -231,9 +311,15 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
             { href: "/solicitar?tab=CATALOGO", label: "Por Categorías", icon: FolderTree, roles: ["CONSUMIDOR"] },
             { href: "/solicitar?tab=HISTORIAL", label: "Mis Solicitudes", icon: ClipboardList, roles: ["CONSUMIDOR"] },
           ]
-        },
+        }
+      ]
+    },
+    {
+      id: "movimientos",
+      title: "Movimientos",
+      icon: ArrowLeftRight,
+      subsections: [
         {
-          label: "Movimientos",
           items: [
             { href: "/movimientos?tab=COMPRAS", label: "Entradas (Recepción)", icon: ArrowDownLeft, badge: "Entrada", badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
             { href: "/movimientos?tab=EGRESO_DIRECTO", label: "Salidas (Consumos)", icon: ArrowUpRight, badge: "Salida", badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20", roles: ["ADMIN", "OPERADOR", "CONTABLE"] },
@@ -243,7 +329,9 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       ]
     },
     {
-      title: "CONFIGURACIÓN Y CATÁLOGOS",
+      id: "configuracion",
+      title: "Configuración y Catálogos",
+      icon: Warehouse,
       subsections: [
         {
           label: "Infraestructura",
@@ -262,7 +350,9 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       ]
     },
     {
-      title: "SISTEMA",
+      id: "sistema",
+      title: "Sistema",
+      icon: ShieldAlert,
       subsections: [
         {
           items: [
@@ -449,123 +539,189 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
             </div>
           )}
 
-          {/* Group Blocks */}
-          {navGroups.map((group, gIdx) => {
+          {/* Controls Bar: Colapsar / Expandir Todo (Icon-only) */}
+          <div className="flex items-center justify-between px-3 pt-1 text-[10px] font-bold text-slate-400">
+            <span className="uppercase tracking-widest text-[9px] font-black text-slate-400 dark:text-slate-500">Módulos</span>
+            <button
+              type="button"
+              onClick={toggleAllGroups}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all cursor-pointer select-none border border-slate-200/60 dark:border-slate-800 hover:border-teal-500/40"
+              title={isAnyGroupOpen ? "Colapsar todo" : "Expandir todo"}
+              aria-label={isAnyGroupOpen ? "Colapsar todo" : "Expandir todo"}
+            >
+              {isAnyGroupOpen ? (
+                <ChevronsDownUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronsUpDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+
+          {/* Group Blocks (Interactive Collapsible Sections) */}
+          {navGroups.map((group) => {
             // Check if any item is visible for this user
             const hasVisibleItems = group.subsections.some(sub => 
               sub.items.some(item => item.roles.includes(user.role))
             );
             if (!hasVisibleItems) return null;
 
+            // Check if current route is inside this group
+            const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+            const isAnyItemActive = group.subsections.some(sub => 
+              sub.items.some(item => currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?')))
+            );
+
+            // Total visible items count inside this group
+            const totalVisibleItems = group.subsections.reduce((acc, sub) => {
+              return acc + sub.items.filter(it => it.roles.includes(user.role)).length;
+            }, 0);
+
+            const isOpen = openGroups[group.id] ?? true;
+            const GroupIcon = group.icon;
+
             return (
-              <div key={gIdx} className="space-y-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/70">
-                <p className="text-[9.5px] font-black tracking-widest text-slate-400/90 dark:text-slate-500 uppercase px-3 pt-0.5">
-                  {group.title}
-                </p>
-
-                <div className="space-y-2.5">
-                  {group.subsections.map((sub, sIdx) => {
-                    const filteredSubItems = sub.items.filter(item => item.roles.includes(user.role));
-                    if (filteredSubItems.length === 0) return null;
-
-                    return (
-                      <div key={sIdx} className="space-y-1">
-                        {sub.label && (
-                          <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400/80 dark:text-slate-500 px-3.5 pt-0.5">
-                            {sub.label}
-                          </p>
-                        )}
-
-                        <nav className="space-y-1">
-                          {filteredSubItems.map((item: any) => {
-                            const currentFullUrl = searchParams?.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
-                            const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
-                            const Icon = item.icon;
-
-                            return (
-                              <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`relative flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-full transition-all duration-200 ease-out group active:scale-[0.97] ${
-                                  isActive 
-                                    ? "bg-[#05b875] text-white shadow-md shadow-[#05b875]/25 translate-x-1" 
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/70 hover:translate-x-1"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <Icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 ${
-                                    isActive 
-                                      ? "text-white" 
-                                      : "text-slate-400 group-hover:text-teal-600 dark:text-slate-400 dark:group-hover:text-teal-400"
-                                  }`} />
-                                  <span className={`truncate ${isActive ? "text-white font-bold" : "group-hover:text-slate-900 dark:group-hover:text-white"}`}>
-                                    {item.label}
-                                  </span>
-                                </div>
-
-                                {item.href === "/solicitudes" && pendientesCount > 0 && (
-                                  <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
-                                    <Bell className="h-2.5 w-2.5 animate-bounce" />
-                                    <span>{pendientesCount}</span>
-                                  </span>
-                                )}
-
-                                {item.href === "/solicitar?tab=HISTORIAL" && pendientesCount > 0 && (
-                                  <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
-                                    <Bell className="h-2.5 w-2.5 animate-bounce" />
-                                    <span>{pendientesCount} por recibir</span>
-                                  </span>
-                                )}
-
-                                {item.badge && !isActive && (
-                                  <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-105 ${item.badgeColor}`}>
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </Link>
-                            );
-                          })}
-                        </nav>
-                      </div>
-                    );
-                  })}
-
-                  {/* If SISTEMA, render NOVEDADES 2026 inside it */}
-                  {group.title === "SISTEMA" && novedadesItems.length > 0 && (
-                    <div className="space-y-1 pt-1">
-                      <div 
-                        ref={triggerRef}
-                        onMouseEnter={handleMouseEnterTrigger}
-                        onMouseLeave={handleMouseLeaveTrigger}
-                        className={`relative flex items-center justify-between px-3.5 py-2.5 text-xs font-medium rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer select-none active:scale-[0.97] ${
-                          isNovedadesActive
-                            ? "bg-gradient-to-r from-[#05b875] to-[#04a065] text-white font-extrabold shadow-md shadow-[#05b875]/25 ring-1 ring-white/20 translate-x-1"
-                            : novedadesHovered
-                            ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold translate-x-1"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-[#132247]/70 hover:translate-x-1"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Sparkles className={`h-4 w-4 shrink-0 transition-transform duration-300 ${
-                            isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse group-hover:scale-110"
-                          }`} />
-                          <span className="truncate font-extrabold">Novedades 2026</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full transition-transform duration-200 ${
-                            isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
-                          }`}>
-                            4 APPS
-                          </span>
-                          <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-300 ease-out ${
-                            novedadesHovered ? "translate-x-1 text-teal-500" : ""
-                          }`} />
-                        </div>
-                      </div>
+              <div 
+                key={group.id} 
+                className="pt-2 border-t border-slate-100 dark:border-slate-800/70"
+              >
+                {/* Category Header (Click to Toggle Accordion - High Contrast & Hierarchical) */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 text-left group cursor-pointer select-none ${
+                    isAnyItemActive && !isOpen
+                      ? "bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-300 font-extrabold border border-teal-200/80 dark:border-teal-800/60"
+                      : "hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`p-1 rounded-lg transition-colors ${
+                      isAnyItemActive
+                        ? "bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-teal-50 group-hover:text-teal-600 dark:group-hover:bg-teal-950/60 dark:group-hover:text-teal-400"
+                    }`}>
+                      <GroupIcon className="h-3.5 w-3.5 shrink-0" />
                     </div>
-                  )}
-                </div>
+                    <span className="text-[10.5px] font-black tracking-wide uppercase truncate text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">
+                      {group.title}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {totalVisibleItems}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ease-out group-hover:text-slate-700 dark:group-hover:text-slate-200 ${
+                      isOpen ? "rotate-0 text-teal-600 dark:text-teal-400" : "-rotate-90"
+                    }`} />
+                  </div>
+                </button>
+
+                {/* Subcategory / Nav Items Body */}
+                {isOpen && (
+                  <div className="space-y-2 mt-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    {group.subsections.map((sub, sIdx) => {
+                      const filteredSubItems = sub.items.filter(item => item.roles.includes(user.role));
+                      if (filteredSubItems.length === 0) return null;
+
+                      return (
+                        <div key={sIdx} className="space-y-1">
+                          {sub.label && (
+                            <p className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-400/80 dark:text-slate-500 px-3.5 pt-0.5">
+                              {sub.label}
+                            </p>
+                          )}
+
+                          <nav className="space-y-1">
+                            {filteredSubItems.map((item: any) => {
+                              const isActive = currentFullUrl === item.href || (pathname === item.href && !item.href.includes('?'));
+                              const Icon = item.icon;
+
+                              return (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  className={`relative flex items-center justify-between px-3.5 py-2 text-xs font-semibold rounded-full transition-all duration-200 ease-out group active:scale-[0.97] ${
+                                    isActive 
+                                      ? "bg-[#05b875] text-white shadow-md shadow-[#05b875]/25 translate-x-1 font-bold" 
+                                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#132247]/70 hover:translate-x-1"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <Icon className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ease-out group-hover:scale-110 ${
+                                      isActive 
+                                        ? "text-white" 
+                                        : "text-slate-400 group-hover:text-teal-600 dark:text-slate-400 dark:group-hover:text-teal-400"
+                                    }`} />
+                                    <span className={`truncate text-[11.5px] ${isActive ? "text-white font-bold" : "group-hover:text-slate-900 dark:group-hover:text-white font-medium"}`}>
+                                      {item.label}
+                                    </span>
+                                  </div>
+
+                                  {item.href === "/solicitudes" && pendientesCount > 0 && (
+                                    <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
+                                      <Bell className="h-2.5 w-2.5 animate-bounce" />
+                                      <span>{pendientesCount}</span>
+                                    </span>
+                                  )}
+
+                                  {item.href === "/solicitar?tab=HISTORIAL" && pendientesCount > 0 && (
+                                    <span className="flex items-center gap-1 bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/30 animate-pulse shrink-0">
+                                      <Bell className="h-2.5 w-2.5 animate-bounce" />
+                                      <span>{pendientesCount} por recibir</span>
+                                    </span>
+                                  )}
+
+                                  {item.badge && !isActive && (
+                                    <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 transition-transform duration-200 group-hover:scale-105 ${item.badgeColor}`}>
+                                      {item.badge}
+                                    </span>
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </nav>
+                        </div>
+                      );
+                    })}
+
+                    {/* If SISTEMA, render NOVEDADES 2026 inside it */}
+                    {group.id === "sistema" && novedadesItems.length > 0 && (
+                      <div className="space-y-1 pt-1">
+                        <div 
+                          ref={triggerRef}
+                          onMouseEnter={handleMouseEnterTrigger}
+                          onMouseLeave={handleMouseLeaveTrigger}
+                          className={`relative flex items-center justify-between px-3.5 py-2 text-xs font-medium rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer select-none active:scale-[0.97] ${
+                            isNovedadesActive
+                              ? "bg-gradient-to-r from-[#05b875] to-[#04a065] text-white font-extrabold shadow-md shadow-[#05b875]/25 ring-1 ring-white/20 translate-x-1"
+                              : novedadesHovered
+                              ? "bg-slate-100 dark:bg-[#132247] text-teal-600 dark:text-teal-400 font-bold translate-x-1"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-[#132247]/70 hover:translate-x-1"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Sparkles className={`h-3.5 w-3.5 shrink-0 transition-transform duration-300 ${
+                              isNovedadesActive ? "text-white" : "text-amber-500 animate-pulse group-hover:scale-110"
+                            }`} />
+                            <span className="truncate font-extrabold text-[11.5px]">Novedades 2026</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full transition-transform duration-200 ${
+                              isNovedadesActive ? "bg-white text-emerald-800" : "bg-amber-500 text-white"
+                            }`}>
+                              4 APPS
+                            </span>
+                            <ChevronRight className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-300 ease-out ${
+                              novedadesHovered ? "translate-x-1 text-teal-500" : ""
+                            }`} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

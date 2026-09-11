@@ -15,7 +15,12 @@ import {
   Loader2,
   Warehouse,
   MapPin,
-  Tag
+  Tag,
+  X,
+  ArrowRight,
+  History,
+  Minus,
+  Receipt
 } from 'lucide-react';
 import { createDocumentoMovimiento, DocumentItemInput } from './docActions';
 import QuickCreateProductModal from '@/components/QuickCreateProductModal';
@@ -48,13 +53,14 @@ interface Props {
   bodegas: BodegaOption[];
   proveedores: ProveedorOption[];
   onSuccess?: () => void;
+  onNavigate?: (tab: 'COMPRAS' | 'INGRESO_DIRECTO' | 'EGRESO_DIRECTO' | 'HISTORIAL', subView?: 'MOVIMIENTOS' | 'FACTURAS_COMPLETAS') => void;
 }
 
 function removeAccents(str: string): string {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-export default function MovimientoComprasForm({ products, bodegas, proveedores, onSuccess }: Props) {
+export default function MovimientoComprasForm({ products, bodegas, proveedores, onSuccess, onNavigate }: Props) {
   const [productsList, setProductsList] = useState<ProductOption[]>(products);
   const [quickCreateModal, setQuickCreateModal] = useState<{
     isOpen: boolean;
@@ -179,6 +185,79 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
     });
   };
 
+  const [showCuadreModal, setShowCuadreModal] = useState(false);
+  const [successModal, setSuccessModal] = useState<{
+    isOpen: boolean;
+    numeroDocumento: string;
+    tipoDocumento: string;
+  } | null>(null);
+
+  // Core submission executor
+  const executeSubmission = async (montoFinal?: number) => {
+    setLoading(true);
+    setStatus(null);
+    setShowCuadreModal(false);
+
+    const docTotal = montoFinal !== undefined ? montoFinal : montoDocumentoNum;
+    const docNumeroActual = numeroDocumento.trim();
+    const docTipoActual = tipoDocumento;
+
+    const payloadItems: DocumentItemInput[] = items.map(item => ({
+      productoId: item.productoId,
+      cantidad: parseInt(item.cantidad) || 1,
+      precioUnitario: parseFloat(item.precioUnitario) || 0,
+      esAfecto: headerEsAfecto,
+      incluyeIva: headerIncluyeIva,
+      subtotal: calculateItemSubtotal(item),
+      bodegaId: headerBodegaId,
+      ubicacionId: headerUbicacionId,
+    }));
+
+    const res = await createDocumentoMovimiento({
+      categoria,
+      tipoDocumento: docTipoActual,
+      numeroDocumento: docNumeroActual,
+      fechaDocumento,
+      rutProveedor: rutProveedor.trim(),
+      razonSocialProveedor: razonSocialProveedor.trim(),
+      montoTotal: docTotal,
+      esRecepcionIncompleta: false,
+      observaciones: observaciones.trim(),
+      items: payloadItems,
+    });
+
+    setLoading(false);
+
+    if (res.success) {
+      setStatus({
+        success: true,
+        message: `Movimiento y documento #${docNumeroActual} registrado exitosamente.`
+      });
+
+      // Show success modal with next action options
+      setSuccessModal({
+        isOpen: true,
+        numeroDocumento: docNumeroActual,
+        tipoDocumento: docTipoActual,
+      });
+
+      // Reset form
+      setNumeroDocumento('');
+      setMontoTotal('');
+      setObservaciones('');
+      setItems([{
+        key: Date.now().toString(),
+        productoId: '',
+        searchQuery: '',
+        cantidad: '1',
+        precioUnitario: '0',
+      }]);
+      if (onSuccess) onSuccess();
+    } else {
+      setStatus({ success: false, message: res.error });
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -210,72 +289,40 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
       }
     }
 
-    // Validate that document total and rounded items sum square
-    if (montoDocumentoNum > 0 && Math.abs(diferenciaCuadre) > 1) {
-      const confirmSubmit = confirm(
-        `Atención: El total ingresado del documento ($${montoDocumentoNum.toLocaleString('es-CL')}) no coincide con la suma redondeada de los productos ($${totalCalculadoDesglose.toLocaleString('es-CL')}).\n` +
-        `Existe una diferencia de $${Math.abs(diferenciaCuadre).toLocaleString('es-CL')}.\n\n` +
-        `¿Deseas registrar el documento de todas formas?`
-      );
-      if (!confirmSubmit) {
-        setStatus({
-          success: false,
-          message: `El total del documento ($${montoDocumentoNum.toLocaleString('es-CL')}) no cuadra con el detalle ingresado ($${totalCalculadoDesglose.toLocaleString('es-CL')}). Revisa las cantidades o precios unitarios.`
-        });
-        return;
-      }
-    }
-
-    setLoading(true);
-    setStatus(null);
-
-    const payloadItems: DocumentItemInput[] = items.map(item => ({
-      productoId: item.productoId,
-      cantidad: parseInt(item.cantidad) || 1,
-      precioUnitario: parseFloat(item.precioUnitario) || 0,
-      esAfecto: headerEsAfecto,
-      incluyeIva: headerIncluyeIva,
-      subtotal: calculateItemSubtotal(item),
-      bodegaId: headerBodegaId,
-      ubicacionId: headerUbicacionId,
-    }));
-
-    const res = await createDocumentoMovimiento({
-      categoria,
-      tipoDocumento,
-      numeroDocumento: numeroDocumento.trim(),
-      fechaDocumento,
-      rutProveedor: rutProveedor.trim(),
-      razonSocialProveedor: razonSocialProveedor.trim(),
-      montoTotal: montoDocumentoNum,
-      esRecepcionIncompleta: false,
-      observaciones: observaciones.trim(),
-      items: payloadItems,
-    });
-
-    setLoading(false);
-
-    if (res.success) {
+    // Validate valid positive amount
+    if (montoDocumentoNum <= 0) {
       setStatus({
-        success: true,
-        message: `Movimiento y documento #${numeroDocumento} registrado exitosamente.`
+        success: false,
+        message: 'Debes ingresar un monto total válido para el documento mayor a $0.'
       });
-      // Reset form
-      setNumeroDocumento('');
-      setMontoTotal('');
-      setObservaciones('');
-      setItems([{
-        key: Date.now().toString(),
-        productoId: '',
-        searchQuery: '',
-        cantidad: '1',
-        precioUnitario: '0',
-      }]);
-      if (onSuccess) onSuccess();
-    } else {
-      setStatus({ success: false, message: res.error });
+      return;
     }
+
+    // Si existe una diferencia hacia arriba o hacia abajo, mostramos el modal para decidir
+    if (!isDocumentoCuadrado) {
+      setShowCuadreModal(true);
+      return;
+    }
+
+    // Si está cuadrado, procede directamente
+    await executeSubmission();
   }
+
+  // Opción 1: Cuadrar manual el documento -> Cierra el modal y enfoca el campo de total / productos para ajustar manualmente
+  const handleCuadrarManual = () => {
+    setShowCuadreModal(false);
+    const inputTotal = document.getElementById('input-total-documento');
+    if (inputTotal) {
+      inputTotal.focus();
+      inputTotal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Opción 2: Ingresar otro producto / movimiento para completar el monto
+  const handleIngresarOtroMovimiento = () => {
+    setShowCuadreModal(false);
+    addItemRow();
+  };
 
   const selectedBodegaObj = bodegas.find(b => b.id === headerBodegaId);
 
@@ -475,6 +522,7 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
             Total del Documento ($ IVA Incluido) *
           </label>
           <input
+            id="input-total-documento"
             type="number"
             min="0"
             required
@@ -713,18 +761,25 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
               )}
             </div>
 
-            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${isDocumentoCuadrado
-                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
-                : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300'
-              }`}>
+            <div className={`px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 ${
+              isDocumentoCuadrado
+                ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                : montoDocumentoNum === 0 && totalCalculadoDesglose === 0
+                ? 'bg-slate-100 dark:bg-slate-850 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+            }`}>
               {isDocumentoCuadrado ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                   <span>Documento Cuadrado</span>
                 </>
+              ) : montoDocumentoNum === 0 && totalCalculadoDesglose === 0 ? (
+                <>
+                  <span>Sin datos ingresados</span>
+                </>
               ) : (
                 <>
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertTriangle className="h-4 w-4 text-rose-600" />
                   <span>Diferencia: ${Math.abs(diferenciaCuadre).toLocaleString('es-CL')}</span>
                 </>
               )}
@@ -758,6 +813,166 @@ export default function MovimientoComprasForm({ products, bodegas, proveedores, 
           <span>Registrar Movimiento y Documento</span>
         )}
       </button>
+
+      {/* Modal de Resolución de Cuadre cuando hay diferencia de precio */}
+      {showCuadreModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    Diferencia en el Documento
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    El total ingresado no coincide con la suma de los productos
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCuadreModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-850 transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Comparativa de Montos */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                <span>Total de Factura / Guía:</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                  ${montoDocumentoNum.toLocaleString('es-CL')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                <span>Suma Desglose de Productos:</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
+                  ${totalCalculadoDesglose.toLocaleString('es-CL')}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center font-extrabold text-rose-600 dark:text-rose-400">
+                <span>Diferencia ({diferenciaCuadre > 0 ? 'Falta en desglose' : 'Excede total'}):</span>
+                <span className="font-mono text-sm">
+                  ${Math.abs(diferenciaCuadre).toLocaleString('es-CL')}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 text-center font-medium">
+              ¿Deseas cuadrar manualmente el documento o ingresar otro producto?
+            </p>
+
+            {/* Botones de Acción de Cuadre */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleIngresarOtroMovimiento}
+                className="py-3 px-3 text-xs font-black text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs text-center active-scale-down"
+              >
+                <Plus className="h-3.5 w-3.5 text-slate-500" />
+                <span>Ingresar otro movimiento</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCuadrarManual}
+                className="py-3 px-3 text-xs font-black text-white bg-[#05b875] hover:bg-emerald-600 rounded-xl transition-all shadow-md shadow-[#05b875]/20 active-scale-down cursor-pointer flex items-center justify-center gap-1.5 text-center"
+              >
+                <Calculator className="h-3.5 w-3.5" />
+                <span>Cuadrar manual</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Éxito con Opciones de Navegación */}
+      {successModal && successModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-scale-up">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
+                ¡Documento Registrado Exitosamente!
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {successModal.tipoDocumento === 'FACTURA' ? 'Factura' : 'Guía de Despacho'} N° <strong className="text-slate-800 dark:text-slate-200 font-mono">{successModal.numeroDocumento}</strong> ingresada correctamente al inventario.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 text-center mb-3">
+                ¿Qué deseas hacer ahora?
+              </p>
+
+              {/* Opción 1: Ver en Historial y Bitácora */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessModal(null);
+                  if (onNavigate) {
+                    onNavigate('HISTORIAL', 'FACTURAS_COMPLETAS');
+                  }
+                }}
+                className="w-full p-3 bg-teal-50 hover:bg-teal-100/80 dark:bg-teal-950/40 dark:hover:bg-teal-900/60 border border-teal-200 dark:border-teal-800/80 text-[#227262] dark:text-teal-300 font-extrabold text-xs rounded-xl flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Receipt className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                  <div className="text-left">
+                    <p className="font-bold">Ver factura en Histórico & Bitácora</p>
+                    <p className="text-[10px] text-teal-700/80 dark:text-teal-400/80 font-normal">Revisa el desglose y bitácora auditada</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Opción 2: Ingresar otro ingreso por compra */}
+              <button
+                type="button"
+                onClick={() => setSuccessModal(null)}
+                className="w-full p-3 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-extrabold text-xs rounded-xl flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Plus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <div className="text-left">
+                    <p className="font-bold">Ingresar otra Factura / Compra</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Registrar un nuevo documento de proveedor</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+              {/* Opción 3: Ir a Registrar una Salida */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccessModal(null);
+                  if (onNavigate) {
+                    onNavigate('EGRESO_DIRECTO');
+                  }
+                }}
+                className="w-full p-3 bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 font-extrabold text-xs rounded-xl flex items-center justify-between transition-all cursor-pointer group shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Minus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <div className="text-left">
+                    <p className="font-bold">Ir a una Salida (Consumo Clínico)</p>
+                    <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 font-normal">Despachar o egresar insumos de bodega</p>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Create Product Popup Modal */}
       <QuickCreateProductModal

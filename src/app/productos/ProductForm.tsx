@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createProductAction, getNextCorrelativeAction, searchSimilarProductsAction } from "./actions";
-import { Plus, AlertCircle, CheckCircle, CheckCircle2, Sparkles, PackageCheck, Calendar, RotateCcw, Info } from "lucide-react";
+import { Plus, AlertCircle, CheckCircle, CheckCircle2, Sparkles, PackageCheck, Calendar, RotateCcw, Info, X } from "lucide-react";
 import UnitSelect from "@/components/UnitSelect";
 
 interface CuentaContable {
@@ -19,6 +19,8 @@ interface UnidadMedida {
 interface ProductFormProps {
   cuentasContables: CuentaContable[];
   unidadesMedida?: UnidadMedida[];
+  onClose?: () => void;
+  onCreated?: (prod: { codigo: string; nombre: string; unidad: string }) => void;
 }
 
 const CLASIFICACIONES = [
@@ -77,7 +79,12 @@ const TIPOS: Record<string, { id: string; nombre: string; dbName: string }[]> = 
   ]
 };
 
-export default function ProductForm({ cuentasContables, unidadesMedida = [] }: ProductFormProps) {
+export default function ProductForm({ 
+  cuentasContables, 
+  unidadesMedida = [],
+  onClose,
+  onCreated
+}: ProductFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -269,15 +276,28 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleReset}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-          title="Limpiar formulario completo"
-        >
-          <RotateCcw className="h-3.5 w-3.5 text-white" />
-          <span>Limpiar</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+            title="Limpiar formulario completo"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-white" />
+            <span>Limpiar</span>
+          </button>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Cerrar ventana"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -632,7 +652,16 @@ export default function ProductForm({ cuentasContables, unidadesMedida = [] }: P
             {/* Action Button */}
             <button
               type="button"
-              onClick={() => setCreatedProductModalData(null)}
+              onClick={() => {
+                const prodInfo = { ...createdProductModalData };
+                setCreatedProductModalData(null);
+                if (onCreated) {
+                  onCreated(prodInfo);
+                }
+                if (onClose) {
+                  onClose();
+                }
+              }}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl transition-all shadow-md active-scale-down cursor-pointer flex items-center justify-center gap-1.5"
             >
               <CheckCircle2 className="h-4 w-4" />

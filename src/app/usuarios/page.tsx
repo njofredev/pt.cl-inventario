@@ -27,6 +27,16 @@ export default async function UsuariosPage() {
     include: { sucursal: true }
   });
 
+  const destinos = await prisma.destino.findMany({
+    include: {
+      sucursal: true
+    },
+    orderBy: [
+      { sucursal: { nombre: "asc" } },
+      { nombre: "asc" }
+    ]
+  });
+
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
@@ -42,7 +52,8 @@ export default async function UsuariosPage() {
       <UserManagementClient 
         initialUsers={users} 
         sucursales={sucursales} 
-        bodegas={bodegas} 
+        bodegas={bodegas}
+        destinos={destinos} 
       />
     </div>
   );

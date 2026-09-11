@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { verifyJWT } from "@/lib/auth";
 import {
   Package,
   AlertTriangle,
@@ -9,12 +11,19 @@ import {
   ArrowRight,
   TrendingUp,
   FileText,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from "lucide-react";
 
 export const revalidate = 0; // Disable cache so it always queries latest stats
 
 export default async function DashboardPage() {
+  // Get active session user
+  const cookieStore = await cookies();
+  const session = cookieStore.get("session")?.value;
+  const user = session ? await verifyJWT(session) : null;
+  const primerNombre = user?.nombre ? user.nombre.split(" ")[0] : "Nicolás";
+
   // Query DB directly
   const totalProducts = await prisma.product.count();
   const totalSuppliers = await prisma.proveedor.count();
@@ -59,11 +68,14 @@ export default async function DashboardPage() {
             <TrendingUp className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-              Panel de Control - Inventario General
+            <h1 className="text-lg md:text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+              <span>¡Hola {primerNombre}! 👋</span>
+              <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2.5 py-0.5 rounded-full border border-teal-200/80 dark:border-teal-800/60 hidden sm:inline-block">
+                Panel General
+              </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              Visualización integrada del control de stock, movimientos e insumos del Policlínico Tabancura.
+              ¿Qué haremos hoy? Revisa el estado del inventario, gestiona solicitudes o registra movimientos.
             </p>
           </div>
         </div>

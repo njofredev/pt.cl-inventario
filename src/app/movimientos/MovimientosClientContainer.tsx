@@ -247,6 +247,12 @@ export default function MovimientosClientContainer({
                 products={products}
                 bodegas={bodegas}
                 proveedores={proveedores}
+                onNavigate={(tab, subView) => {
+                  setActiveTab(tab);
+                  if (subView) {
+                    setHistorialView(subView);
+                  }
+                }}
               />
             </div>
           )}
