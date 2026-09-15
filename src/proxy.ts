@@ -32,7 +32,22 @@ export default async function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from login
   if (pathname === '/login' && payload) {
+    if (payload.role === 'CONSUMIDOR') {
+      return NextResponse.redirect(new URL('/solicitar', request.url));
+    }
     return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  // Restrict CONSUMIDOR from bodega/admin dashboard and management pages
+  if (payload?.role === 'CONSUMIDOR') {
+    const isAllowedForConsumer = 
+      pathname.startsWith('/solicitar') ||
+      pathname === '/login' ||
+      pathname.startsWith('/api');
+
+    if (!isAllowedForConsumer) {
+      return NextResponse.redirect(new URL('/solicitar', request.url));
+    }
   }
 
   // Check admin permission for /usuarios route
