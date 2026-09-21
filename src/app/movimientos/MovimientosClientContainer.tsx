@@ -7,6 +7,7 @@ import MovimientoComprasForm from './MovimientoComprasForm';
 import MovimientoForm from './MovimientoForm';
 import RecepcionesPendientesList from './RecepcionesPendientesList';
 import UltimosIngresosFacturasList from './UltimosIngresosFacturasList';
+import { formatLocalDate } from '@/lib/dateFormat';
 
 interface Props {
   products: any[];
@@ -478,13 +479,7 @@ export default function MovimientosClientContainer({
 
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-400">
                             <span className="font-medium text-slate-500 dark:text-slate-400" suppressHydrationWarning>
-                              {new Date(t.fecha).toLocaleDateString('es-CL', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                              {formatLocalDate(t.fecha)}
                             </span>
 
                             {t.documentoTipo && !isSystemCorrelative && (
@@ -581,7 +576,7 @@ export default function MovimientosClientContainer({
                         {/* Fecha del movimiento */}
                         <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
                           <Calendar className="h-2.5 w-2.5 text-slate-400" />
-                          {new Date(t.fecha).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          {formatLocalDate(t.fecha)}
                         </span>
 
                         {t.documentoNumero && (

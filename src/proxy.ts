@@ -60,6 +60,11 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
+  // Check admin permission for /reporteria route
+  if (pathname.startsWith('/reporteria') && payload?.role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   return NextResponse.next();
 }
 

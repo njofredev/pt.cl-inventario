@@ -14,6 +14,7 @@ import {
   Layers
 } from 'lucide-react';
 import { engancharFacturaAGuia } from './docActions';
+import { formatLocalDate } from '@/lib/dateFormat';
 
 interface Documento {
   id: string;
@@ -114,7 +115,7 @@ export default function RecepcionesPendientesList({ documentosPendientes }: Prop
                       {doc.proveedor?.razonSocial || 'Proveedor no especificado'}
                     </h3>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      RUT: {doc.proveedor?.rut || 'N/A'} | Fecha: {new Date(doc.fechaDocumento).toLocaleDateString('es-CL')}
+                      RUT: {doc.proveedor?.rut || 'N/A'} | Fecha: {formatLocalDate(doc.fechaDocumento)}
                     </p>
                   </div>
 
@@ -181,7 +182,7 @@ export default function RecepcionesPendientesList({ documentosPendientes }: Prop
                       {doc.proveedor?.razonSocial || 'Proveedor no especificado'}
                     </h3>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      RUT: {doc.proveedor?.rut || 'N/A'} | Fecha: {new Date(doc.fechaDocumento).toLocaleDateString('es-CL')}
+                      RUT: {doc.proveedor?.rut || 'N/A'} | Fecha: {formatLocalDate(doc.fechaDocumento)}
                     </p>
                   </div>
 

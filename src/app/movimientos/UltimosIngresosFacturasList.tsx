@@ -20,6 +20,7 @@ import {
   Warehouse,
   Tag
 } from 'lucide-react';
+import { formatLocalDate } from '@/lib/dateFormat';
 
 export interface DocumentoIngreso {
   id: string;
@@ -253,11 +254,7 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
 
                         <span className="flex items-center gap-1 text-[11px]" suppressHydrationWarning>
                           <Calendar className="h-3 w-3 text-slate-400" />
-                          {new Date(doc.fechaDocumento).toLocaleDateString('es-CL', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
+                          {formatLocalDate(doc.fechaDocumento)}
                         </span>
 
                         <span className="flex items-center gap-1 text-[11px] text-teal-600 dark:text-teal-400">

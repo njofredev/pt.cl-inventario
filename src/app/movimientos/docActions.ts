@@ -162,8 +162,27 @@ export async function createDocumentoMovimiento(input: CreateDocumentInput) {
       const empresaConfig = await getConfiguracionEmpresa();
       const pppConsideraIva = empresaConfig.pppIncluyeIva;
 
+      // Regla General de Cuadratura: Ajustar diferencia residual (±$1 o ±$2 pesos) en el ítem de mayor valor
+      const itemsPrepared = input.items.map(it => ({
+        ...it,
+        subtotal: Math.round(it.subtotal)
+      }));
+      const sumaCalculada = itemsPrepared.reduce((acc, it) => acc + it.subtotal, 0);
+      const difResidual = Math.round(input.montoTotal) - sumaCalculada;
+
+      if (itemsPrepared.length > 0 && Math.abs(difResidual) > 0 && Math.abs(difResidual) <= 3) {
+        // Encontrar el ítem de mayor subtotal y asignarle la diferencia para que la suma sea exactamente igual al montoTotal
+        let maxItem = itemsPrepared[0];
+        for (const it of itemsPrepared) {
+          if (it.subtotal > maxItem.subtotal) {
+            maxItem = it;
+          }
+        }
+        maxItem.subtotal += difResidual;
+      }
+
       // Process each item
-      for (const item of input.items) {
+      for (const item of itemsPrepared) {
         // Calculate unit price for inventory valuation (PPP)
         let valorUnitarioValuacion = item.precioUnitario;
 

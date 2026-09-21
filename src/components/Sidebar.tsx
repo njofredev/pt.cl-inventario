@@ -34,7 +34,8 @@ import {
   Bell,
   Check,
   ChevronsDownUp,
-  ChevronsUpDown
+  ChevronsUpDown,
+  BarChart3
 } from "lucide-react";
 
 import { JWTPayload } from "@/lib/auth";
@@ -87,7 +88,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       stock: currentPath.startsWith('/productos') || currentPath.startsWith('/solicitudes') || currentPath.startsWith('/solicitar'),
       movimientos: currentPath.startsWith('/movimientos'),
       configuracion: currentPath.startsWith('/bodegas') || currentPath.startsWith('/destinos') || currentPath.startsWith('/proveedores') || currentPath.startsWith('/unidades'),
-      sistema: currentPath.startsWith('/usuarios') || currentPath.startsWith('/configuracion') || currentPath.startsWith('/novedades'),
+      sistema: currentPath.startsWith('/usuarios') || currentPath.startsWith('/configuracion') || currentPath.startsWith('/novedades') || currentPath.startsWith('/reporteria'),
     };
   });
 
@@ -129,7 +130,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       setOpenGroups(prev => ({ ...prev, movimientos: true }));
     } else if (pathname.startsWith('/bodegas') || pathname.startsWith('/destinos') || pathname.startsWith('/proveedores') || pathname.startsWith('/unidades')) {
       setOpenGroups(prev => ({ ...prev, configuracion: true }));
-    } else if (pathname.startsWith('/usuarios') || pathname.startsWith('/configuracion') || pathname.startsWith('/novedades')) {
+    } else if (pathname.startsWith('/usuarios') || pathname.startsWith('/configuracion') || pathname.startsWith('/novedades') || pathname.startsWith('/reporteria')) {
       setOpenGroups(prev => ({ ...prev, sistema: true }));
     }
   }, [pathname]);
@@ -356,6 +357,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
       subsections: [
         {
           items: [
+            { href: "/reporteria", label: "Reportería y Analítica", icon: BarChart3, roles: ["ADMIN"] },
             { href: "/usuarios", label: "Gestión de Usuarios y Roles", icon: ShieldAlert, roles: ["ADMIN"] },
             { href: "/configuracion", label: "Configuración de Empresa", icon: Sliders, roles: ["ADMIN", "CONTABLE"] },
           ]

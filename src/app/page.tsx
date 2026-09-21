@@ -123,13 +123,16 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="mt-3">
-            <h3 className={`text-2xl font-black leading-none ${lowStockCount > 0 ? "text-red-700 dark:text-red-200" : "text-slate-800 dark:text-slate-100"
+            <h3 className={`text-2xl font-black leading-none flex items-baseline gap-1.5 ${lowStockCount > 0 ? "text-red-700 dark:text-red-200" : "text-slate-800 dark:text-slate-100"
               }`}>
-              {lowStockCount}
+              <span>{lowStockCount}</span>
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 font-sans tracking-normal">
+                de {totalProducts} productos
+              </span>
             </h3>
             <p className="text-[10px] font-extrabold text-red-600 dark:text-red-400 mt-1.5 flex items-center gap-1">
               <span>⚠️</span>
-              <span>{lowStockCount} requieren reposición</span>
+              <span>{totalProducts > 0 ? `${((lowStockCount / totalProducts) * 100).toFixed(0)}% del catálogo requiere reposición` : `${lowStockCount} requieren reposición`}</span>
             </p>
           </div>
         </div>
