@@ -80,16 +80,12 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
   // Search Modal State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Accordion state for collapsible navigation categories (Click-only toggle)
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    // Determine initially active category using Next.js pathname (consistent between SSR & hydration)
-    const currentPath = pathname || '';
-    return {
-      stock: currentPath.startsWith('/productos') || currentPath.startsWith('/solicitudes') || currentPath.startsWith('/solicitar'),
-      movimientos: currentPath.startsWith('/movimientos'),
-      configuracion: currentPath.startsWith('/bodegas') || currentPath.startsWith('/destinos') || currentPath.startsWith('/proveedores') || currentPath.startsWith('/unidades'),
-      sistema: currentPath.startsWith('/usuarios') || currentPath.startsWith('/configuracion') || currentPath.startsWith('/novedades') || currentPath.startsWith('/reporteria'),
-    };
+  // Accordion state for collapsible navigation categories (Open by default upon entering)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    stock: true,
+    movimientos: true,
+    configuracion: true,
+    sistema: true,
   });
 
   const toggleGroup = (groupId: string) => {
@@ -450,7 +446,7 @@ export default function Sidebar({ user, logoutAction }: SidebarProps) {
   };
 
   return (
-    <aside className="hidden md:flex flex-col fixed top-3 bottom-3 left-3 w-[270px] bg-white border border-slate-200/80 dark:bg-[#070e1e] dark:border-[#172545] rounded-[26px] shadow-xl shadow-slate-200/50 dark:shadow-2xl justify-between select-none z-40 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
+    <aside className="hidden md:flex flex-col fixed top-3 bottom-3 left-3 w-[270px] bg-white border border-slate-200/80 dark:bg-[#070e1e] dark:border-slate-800/80 rounded-[26px] shadow-xl shadow-slate-200/50 dark:shadow-none justify-between select-none z-40 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
       {/* Scrollable Upper Area */}
       <div className="flex flex-col flex-1 min-h-0 overflow-y-auto hide-scrollbar px-3 pt-4 pb-2">

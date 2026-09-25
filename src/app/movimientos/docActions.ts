@@ -331,3 +331,231 @@ export async function engancharFacturaAGuia(docId: string, numeroFactura: string
     return { success: false, error: error.message || 'Error al enganchar la factura.' };
   }
 }
+
+export interface GuardarDesgloseFacturaInput {
+  documentoId: string;
+  items: DocumentItemInput[];
+}
+
+export async function guardarDesgloseFactura(input: GuardarDesgloseFacturaInput) {
+  try {
+    const cookieStore = await cookies();
+    const session = cookieStore.get('session')?.value;
+    const user = session ? await verifyJWT(session) : null;
+
+    if (!user) {
+      return { success: false, error: 'Usuario no autenticado.' };
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: user.userId } });
+    const validUserId = dbUser ? dbUser.id : (await prisma.user.findFirst())?.id;
+
+    if (!validUserId) {
+      return { success: false, error: 'No existe un usuario activo para registrar los movimientos.' };
+    }
+
+    const doc = await prisma.documentoMovimiento.findUnique({
+      where: { id: input.documentoId },
+      include: {
+        proveedor: true,
+        items: true,
+        movimientos: true,
+      },
+    });
+
+    if (!doc) {
+      return { success: false, error: 'Documento / Factura no encontrada.' };
+    }
+
+    if (!input.items || input.items.length === 0) {
+      return { success: false, error: 'Debes agregar al menos un producto al desglose.' };
+    }
+
+    const { getUserPermissions } = await import('@/lib/permissions');
+    const permissions = await getUserPermissions();
+    if (permissions?.isFiltered) {
+      for (const item of input.items) {
+        if (item.bodegaId && !permissions.bodegasIds.includes(item.bodegaId)) {
+          return { success: false, error: 'No tienes permisos para registrar movimientos en una o más de las bodegas seleccionadas.' };
+        }
+      }
+    }
+
+    const tipoMov = await prisma.tipoMovimiento.findFirst({
+      where: { esEntrada: true },
+    });
+
+    if (!tipoMov) {
+      return { success: false, error: 'No se encontró un tipo de movimiento de entrada configurado.' };
+    }
+
+    const { getConfiguracionEmpresa } = await import('@/lib/empresaConfig');
+    const empresaConfig = await getConfiguracionEmpresa();
+    const pppConsideraIva = empresaConfig.pppIncluyeIva;
+
+    // Ajuste residual centavos/pesos si la diferencia con el total de la factura es pequeña (±$3)
+    const itemsPrepared = input.items.map(it => ({
+      ...it,
+      subtotal: Math.round(it.subtotal)
+    }));
+    const sumaCalculada = itemsPrepared.reduce((acc, it) => acc + it.subtotal, 0);
+    const difResidual = Math.round(doc.montoTotal) - sumaCalculada;
+
+    if (itemsPrepared.length > 0 && Math.abs(difResidual) > 0 && Math.abs(difResidual) <= 3) {
+      let maxItem = itemsPrepared[0];
+      for (const it of itemsPrepared) {
+        if (it.subtotal > maxItem.subtotal) {
+          maxItem = it;
+        }
+      }
+      maxItem.subtotal += difResidual;
+    }
+
+    // Identificar productos afectados previos y nuevos para recalcular Kardex
+    const previousProductIds = doc.items.map(it => it.productoId);
+    const newProductIds = input.items.map(it => it.productoId);
+    const allTouchedProductIds = Array.from(new Set([...previousProductIds, ...newProductIds]));
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Revertir stock de ítems previos si existían
+      for (const oldItem of doc.items) {
+        if (oldItem.bodegaId && oldItem.ubicacionId) {
+          await tx.stock.updateMany({
+            where: {
+              productoId: oldItem.productoId,
+              bodegaId: oldItem.bodegaId,
+              ubicacionId: oldItem.ubicacionId,
+            },
+            data: {
+              cantidad: { decrement: oldItem.cantidad },
+            },
+          });
+        }
+      }
+
+      // 2. Eliminar ítems previos y movimientos previos ligados a este doc
+      await tx.documentoMovimientoItem.deleteMany({
+        where: { documentoMovimientoId: doc.id },
+      });
+
+      await tx.movimiento.deleteMany({
+        where: { documentoMovimientoId: doc.id },
+      });
+
+      // 3. Crear nuevos DocumentoMovimientoItem y Movimientos, e incrementar stock
+      for (const item of itemsPrepared) {
+        let valorUnitarioValuacion = item.precioUnitario;
+        if (pppConsideraIva) {
+          if (item.esAfecto && !item.incluyeIva) {
+            valorUnitarioValuacion = item.precioUnitario * 1.19;
+          }
+        } else {
+          if (item.esAfecto && item.incluyeIva) {
+            valorUnitarioValuacion = item.precioUnitario / 1.19;
+          }
+        }
+        const valorUnitarioFinal = valorUnitarioValuacion;
+
+        let finalUbicacionId = item.ubicacionId;
+        if (!finalUbicacionId && item.bodegaId) {
+          const defaultUbi = await tx.ubicacion.findFirst({
+            where: { bodegaId: item.bodegaId },
+            orderBy: { nombre: 'asc' },
+          });
+          if (defaultUbi) {
+            finalUbicacionId = defaultUbi.id;
+          } else {
+            const newDefault = await tx.ubicacion.create({
+              data: {
+                nombre: 'General / Principal',
+                bodegaId: item.bodegaId,
+              },
+            });
+            finalUbicacionId = newDefault.id;
+          }
+        }
+
+        // Crear item en la factura
+        await tx.documentoMovimientoItem.create({
+          data: {
+            documentoMovimientoId: doc.id,
+            productoId: item.productoId,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            esAfecto: item.esAfecto,
+            incluyeIva: item.incluyeIva,
+            subtotal: item.subtotal,
+            bodegaId: item.bodegaId || null,
+            ubicacionId: finalUbicacionId || null,
+          },
+        });
+
+        // Crear auditoría en Movimiento
+        await tx.movimiento.create({
+          data: {
+            fecha: doc.fechaDocumento,
+            productoId: item.productoId,
+            tipoMovimientoId: tipoMov.id,
+            cantidad: item.cantidad,
+            valorUnitario: valorUnitarioFinal,
+            pppCalculado: valorUnitarioFinal,
+            bodegaId: item.bodegaId || null,
+            ubicacionId: finalUbicacionId || null,
+            proveedorId: doc.proveedorId,
+            usuarioId: validUserId,
+            documentoTipo: doc.tipoDocumento,
+            documentoNumero: doc.numeroDocumento,
+            documentoMovimientoId: doc.id,
+          },
+        });
+
+        // Incrementar stock físico
+        if (item.bodegaId && finalUbicacionId) {
+          await tx.stock.upsert({
+            where: {
+              productoId_bodegaId_ubicacionId: {
+                productoId: item.productoId,
+                bodegaId: item.bodegaId,
+                ubicacionId: finalUbicacionId,
+              },
+            },
+            update: {
+              cantidad: { increment: item.cantidad },
+            },
+            create: {
+              productoId: item.productoId,
+              bodegaId: item.bodegaId,
+              ubicacionId: finalUbicacionId,
+              cantidad: item.cantidad,
+            },
+          });
+        }
+      }
+
+      // Actualizar estado de conciliación
+      const nuevaSuma = itemsPrepared.reduce((acc, it) => acc + it.subtotal, 0);
+      const cuadraExacto = Math.abs(Math.round(doc.montoTotal) - nuevaSuma) === 0;
+
+      await tx.documentoMovimiento.update({
+        where: { id: doc.id },
+        data: {
+          estadoConciliacion: cuadraExacto ? 'CUADRADO' : 'PENDIENTE_CONCILIACION',
+        },
+      });
+
+      // Recalcular PPP para todos los productos afectados
+      const { recalcularPPPProducto } = await import('@/lib/kardex');
+      for (const prodId of allTouchedProductIds) {
+        await recalcularPPPProducto(tx, prodId);
+      }
+    });
+
+    revalidatePath('/movimientos');
+    revalidatePath('/productos');
+    revalidatePath('/novedades/kardex');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error guardando desglose de factura:', error);
+    return { success: false, error: error.message || 'Error al guardar el desglose de la factura.' };
+  }
+}

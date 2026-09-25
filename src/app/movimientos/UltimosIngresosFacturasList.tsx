@@ -18,9 +18,12 @@ import {
   ChevronRight,
   Eye,
   Warehouse,
-  Tag
+  Tag,
+  PlusCircle,
+  Scale
 } from 'lucide-react';
 import { formatLocalDate } from '@/lib/dateFormat';
+import ModalIngresoCuadraturaFactura from './ModalIngresoCuadraturaFactura';
 
 export interface DocumentoIngreso {
   id: string;
@@ -71,15 +74,27 @@ export interface DocumentoIngreso {
 
 interface Props {
   documentos: DocumentoIngreso[];
+  products?: Array<{
+    id: string;
+    codigo: string;
+    nombre: string;
+    unidad?: string | null;
+  }>;
+  bodegas?: Array<{
+    id: string;
+    nombre: string;
+    ubicaciones: Array<{ id: string; nombre: string }>;
+  }>;
 }
 
 const ITEMS_PER_PAGE = 5;
 
-export default function UltimosIngresosFacturasList({ documentos }: Props) {
+export default function UltimosIngresosFacturasList({ documentos, products = [], bodegas = [] }: Props) {
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [tipoFilter, setTipoFilter] = useState<'TODOS' | 'FACTURA' | 'GUIA_DESPACHO'>('TODOS');
   const [currentPage, setCurrentPage] = useState(1);
+  const [facturaEnCuadratura, setFacturaEnCuadratura] = useState<DocumentoIngreso | null>(null);
 
   // Filter documents
   const filteredDocs = documentos.filter((doc) => {
@@ -269,25 +284,40 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
                   <div className="flex items-center justify-between lg:justify-end gap-4 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                     <div className="text-left lg:text-right">
                       <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                        Monto Total ({doc.items[0]?.esAfecto ? 'IVA Incl.' : 'Exento'})
+                        Monto Total ({doc.items.length > 0 && !doc.items[0]?.esAfecto ? 'Exento' : 'IVA Incl.'})
                       </span>
                       <span className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">
                         ${Math.round(doc.montoTotal).toLocaleString('es-CL')}
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      className={`p-2 rounded-xl border transition-all flex items-center gap-1 text-xs font-bold ${
-                        isExpanded
-                          ? 'bg-[#227262] text-white border-[#227262]'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">{isExpanded ? 'Ocultar Detalle' : 'Ver Detalle Completo'}</span>
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-0.5" /> : <ChevronDown className="h-3.5 w-3.5 ml-0.5" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFacturaEnCuadratura(doc);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-teal-50 hover:bg-[#227262] text-[#227262] hover:text-white border border-teal-200 dark:bg-teal-950/40 dark:border-teal-800/80 dark:text-teal-300 dark:hover:bg-[#227262] dark:hover:text-white transition-all text-xs font-black flex items-center gap-1.5 shadow-2xs hover:shadow-md cursor-pointer active:scale-95"
+                        title="Ingresar productos y verificar cuadratura con el total de la factura"
+                      >
+                        <Scale className="h-3.5 w-3.5" />
+                        <span>{doc.items.length === 0 ? 'Ingresar Productos' : 'Modificar / Cuadrar'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`p-2 rounded-xl border transition-all flex items-center gap-1 text-xs font-bold active:scale-95 ${
+                          isExpanded
+                            ? 'bg-[#227262] text-white border-[#227262]'
+                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{isExpanded ? 'Ocultar' : 'Ver'}</span>
+                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-0.5" /> : <ChevronDown className="h-3.5 w-3.5 ml-0.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -319,53 +349,61 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
-                            {doc.items.map((item, idx) => {
-                              // Valor unitario bruto (con IVA incluido):
-                              // Corresponde al subtotal dividido por la cantidad (es decir, precioUnitario * 1.19 si es afecto).
-                              const valorUnitarioBruto = item.cantidad > 0 
-                                ? item.subtotal / item.cantidad 
-                                : (item.esAfecto ? item.precioUnitario * 1.19 : item.precioUnitario);
+                            {doc.items.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="py-6 text-center text-xs text-slate-400 font-medium">
+                                  Esta factura no tiene productos desglosados actualmente (cabecera con total registrada).
+                                </td>
+                              </tr>
+                            ) : (
+                              doc.items.map((item, idx) => {
+                                // Valor unitario bruto (con IVA incluido):
+                                // Corresponde al subtotal dividido por la cantidad (es decir, precioUnitario * 1.19 si es afecto).
+                                const valorUnitarioBruto = item.cantidad > 0 
+                                  ? item.subtotal / item.cantidad 
+                                  : (item.esAfecto ? item.precioUnitario * 1.19 : item.precioUnitario);
 
-                              return (
-                                <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
-                                  <td className="py-2.5 px-3 font-mono font-bold text-[11px] text-[#227262] dark:text-teal-400 whitespace-nowrap">
-                                    {item.producto?.codigo || 'S/C'}
-                                  </td>
-                                  <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100">
-                                    {item.producto?.nombre}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center font-black font-mono whitespace-nowrap">
-                                    <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] whitespace-nowrap">
-                                      +{item.cantidad} {item.producto?.unidad || 'UND'}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                                    ${item.precioUnitario.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
-                                    ${valorUnitarioBruto.toLocaleString('es-CL', {
-                                      minimumFractionDigits: valorUnitarioBruto % 1 === 0 ? 0 : 2,
-                                      maximumFractionDigits: 2
-                                    })}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
-                                      item.esAfecto 
-                                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                    }`}>
-                                      {item.esAfecto ? 'Afecto 19%' : 'Exento'}
-                                    </span>
-                                  </td>
-                                  <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                    ${item.subtotal.toLocaleString('es-CL', {
-                                      minimumFractionDigits: item.subtotal % 1 === 0 ? 0 : 2,
-                                      maximumFractionDigits: 2
-                                    })}
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                return (
+                                  <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="py-2.5 px-3 font-mono font-bold text-[11px] text-[#227262] dark:text-teal-400 whitespace-nowrap">
+                                      {item.producto?.codigo || 'S/C'}
+                                    </td>
+                                    <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-100">
+                                      {item.producto?.nombre}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center font-black font-mono whitespace-nowrap">
+                                      <span className="inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] whitespace-nowrap">
+                                        +{item.cantidad} {item.producto?.unidad || 'UND'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                      ${item.precioUnitario.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                                      ${valorUnitarioBruto.toLocaleString('es-CL', {
+                                        minimumFractionDigits: valorUnitarioBruto % 1 === 0 ? 0 : 2,
+                                        maximumFractionDigits: 2
+                                      })}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center">
+                                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                        item.esAfecto 
+                                          ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                      }`}>
+                                        {item.esAfecto ? 'Afecto 19%' : 'Exento'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-right font-mono font-black text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                                      ${item.subtotal.toLocaleString('es-CL', {
+                                        minimumFractionDigits: item.subtotal % 1 === 0 ? 0 : 2,
+                                        maximumFractionDigits: 2
+                                      })}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
                           </tbody>
                           <tfoot>
                             <tr className="bg-slate-50 dark:bg-slate-800/80 font-black border-t-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100">
@@ -462,6 +500,19 @@ export default function UltimosIngresosFacturasList({ documentos }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal de Ingreso Manual y Cuadratura de Factura */}
+      {facturaEnCuadratura && (
+        <ModalIngresoCuadraturaFactura
+          factura={facturaEnCuadratura}
+          products={products}
+          bodegas={bodegas}
+          onClose={() => setFacturaEnCuadratura(null)}
+          onSuccess={() => {
+            setFacturaEnCuadratura(null);
+          }}
+        />
       )}
     </div>
   );

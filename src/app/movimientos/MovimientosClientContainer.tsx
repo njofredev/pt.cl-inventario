@@ -355,7 +355,11 @@ export default function MovimientosClientContainer({
 
               {/* VISTA 1: FACTURAS & GUÍAS COMPLETAS INGRESADAS */}
               {historialView === 'FACTURAS_COMPLETAS' && (
-                <UltimosIngresosFacturasList documentos={documentosPendientes} />
+                <UltimosIngresosFacturasList 
+                  documentos={documentosPendientes} 
+                  products={products}
+                  bodegas={bodegas}
+                />
               )}
 
               {/* VISTA 2: MOVIMIENTOS POR PRODUCTO INDIVIDUAL */}
@@ -449,8 +453,12 @@ export default function MovimientosClientContainer({
                 <div className="divide-y divide-slate-100 dark:divide-slate-800 space-y-1">
                   {filteredMovements.map((t) => {
                     const isEntrada = t.tipoMovimiento.esEntrada;
-                    const correlativo = t.documentoNumero || (t.id ? `#${t.id.slice(-6).toUpperCase()}` : 'S/N');
                     const isSystemCorrelative = t.documentoNumero && (t.documentoNumero.startsWith('SAL-') || t.documentoNumero.startsWith('ING-'));
+                    
+                    // Identificador para el badge superior
+                    const badgeText = t.documentoTipo && t.documentoNumero && !isSystemCorrelative
+                      ? `${t.documentoTipo === 'FACTURA' ? 'FAC' : t.documentoTipo === 'GUIA_DESPACHO' ? 'GUÍA' : t.documentoTipo} N° ${t.documentoNumero}`
+                      : t.documentoNumero || (t.id ? `#${t.id.slice(-6).toUpperCase()}` : 'S/N');
 
                     return (
                       <div 
@@ -459,14 +467,14 @@ export default function MovimientosClientContainer({
                       >
                         <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            {/* Badge Correlativo */}
+                            {/* Badge Correlativo / Documento */}
                             <span className={`inline-flex items-center gap-1 font-mono text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-md ${
                               isEntrada 
                                 ? 'bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70' 
                                 : 'bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/70'
                             }`}>
                               <Tag className="h-2.5 w-2.5" />
-                              {correlativo}
+                              {badgeText}
                             </span>
 
                             <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
@@ -482,9 +490,10 @@ export default function MovimientosClientContainer({
                               {formatLocalDate(t.fecha)}
                             </span>
 
-                            {t.documentoTipo && !isSystemCorrelative && (
+                            {/* Mostrar tipo de movimiento o proveedor si aplica */}
+                            {t.tipoMovimiento?.nombre && (
                               <span className="font-semibold text-slate-600 dark:text-slate-300">
-                                {t.documentoTipo} N° {t.documentoNumero}
+                                {t.tipoMovimiento.nombre}
                               </span>
                             )}
 
